@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -10,6 +11,7 @@ const NAV = [
 ]
 
 export default function Layout({ children }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const { usuario, logout, tieneRol } = useAuth()
   const navigate = useNavigate()
 
@@ -17,6 +19,8 @@ export default function Layout({ children }) {
     logout()
     navigate('/login')
   }
+
+  const cerrar = () => setSidebarOpen(false)
 
   const ROLE_LABEL = {
     admin:     'Administrador',
@@ -26,7 +30,9 @@ export default function Layout({ children }) {
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      {sidebarOpen && <div className="sidebar-overlay" onClick={cerrar}/>}
+
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
           <span>🍦</span> Heladería
         </div>
@@ -37,6 +43,7 @@ export default function Layout({ children }) {
               key={n.to}
               to={n.to}
               className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              onClick={cerrar}
             >
               <span className="nav-icon">{n.icon}</span>
               {n.label}
@@ -53,7 +60,14 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      <main className="main">{children}</main>
+      <main className="main">
+        <div className="topbar">
+          <button className="btn-menu" onClick={() => setSidebarOpen(true)}>☰</button>
+          <span className="topbar-title">🍦 Heladería</span>
+          <span/>
+        </div>
+        {children}
+      </main>
     </div>
   )
 }

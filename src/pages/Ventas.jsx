@@ -179,7 +179,7 @@ export default function Ventas() {
         </button>
       </div>
 
-      <div className="page-content" style={{
+      <div className="page-content pos-layout" style={{
         display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start'
       }}>
 
