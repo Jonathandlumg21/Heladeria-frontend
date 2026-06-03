@@ -50,7 +50,6 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    if (!tieneRol('admin')) return
     setCargando(true)
     api.get(`/dashboard/ventas-por-metodo?periodo=${periodoMetodos}`)
       .then(r => setMetodosPago(r.data))
@@ -59,6 +58,8 @@ export default function Dashboard() {
   }, [periodoMetodos])
 
   const fmt = (n) => `Q${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2 })}`
+
+  const grandTotalMetodos = metodosPago.reduce((s, x) => s + parseFloat(x.total || 0), 0)
 
   return (
     <div>
@@ -199,9 +200,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Ventas por método de pago — solo admin */}
-        {tieneRol('admin') && (
-          <div className="card card-body" style={{ marginTop: 24 }}>
+        {/* Ventas por método de pago */}
+        <div className="card card-body" style={{ marginTop: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
               <h3 style={{ fontWeight: 700 }}>💰 Ventas por método de pago</h3>
               <div style={{ display: 'flex', gap: 6 }}>
@@ -219,81 +219,77 @@ export default function Dashboard() {
 
             {cargandoMetodos ? (
               <div className="loading-center"><div className="spinner"/> Cargando...</div>
-            ) : (() => {
-              const grandTotal = metodosPago.reduce((s, x) => s + parseFloat(x.total || 0), 0)
-              return (
-                <>
-                  {/* Tarjetas grandes por método */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
-                    {['efectivo', 'tarjeta', 'fri'].map(m => {
-                      const cfg      = METODO_CONFIG[m]
-                      const dato     = metodosPago.find(x => x.metodo === m)
-                      const total    = parseFloat(dato?.total    || 0)
-                      const cantidad = parseInt  (dato?.cantidad || 0)
-                      const pct      = grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0
-                      return (
-                        <div key={m} style={{
-                          borderRadius: 12, padding: '20px 18px',
-                          background: cfg.color + '0f',
-                          border: `1.5px solid ${cfg.color}30`,
-                          textAlign: 'center',
-                        }}>
-                          <div style={{ fontSize: 28, marginBottom: 6 }}>{cfg.icon}</div>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-                            {cfg.label}
-                          </div>
-                          <div style={{ fontSize: 26, fontWeight: 800, color: cfg.color, marginBottom: 4 }}>
-                            {fmt(total)}
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-                            {cantidad} {cantidad === 1 ? 'transacción' : 'transacciones'}
-                          </div>
-                          <div style={{
-                            display: 'inline-block', fontSize: 13, fontWeight: 700,
-                            color: cfg.color, background: cfg.color + '20',
-                            padding: '3px 12px', borderRadius: 20,
-                          }}>
-                            {pct}% del total
-                          </div>
+            ) : (
+              <>
+                {/* Tarjetas grandes por método */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                  {['efectivo', 'tarjeta', 'fri'].map(m => {
+                    const cfg      = METODO_CONFIG[m]
+                    const dato     = metodosPago.find(x => x.metodo === m)
+                    const total    = parseFloat(dato?.total    || 0)
+                    const cantidad = parseInt  (dato?.cantidad || 0)
+                    const pct      = grandTotalMetodos > 0 ? Math.round((total / grandTotalMetodos) * 100) : 0
+                    return (
+                      <div key={m} style={{
+                        borderRadius: 12, padding: '20px 18px',
+                        background: cfg.color + '0f',
+                        border: `1.5px solid ${cfg.color}30`,
+                        textAlign: 'center',
+                      }}>
+                        <div style={{ fontSize: 28, marginBottom: 6 }}>{cfg.icon}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                          {cfg.label}
                         </div>
-                      )
-                    })}
-                  </div>
+                        <div style={{ fontSize: 26, fontWeight: 800, color: cfg.color, marginBottom: 4 }}>
+                          {fmt(total)}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                          {cantidad} {cantidad === 1 ? 'transacción' : 'transacciones'}
+                        </div>
+                        <div style={{
+                          display: 'inline-block', fontSize: 13, fontWeight: 700,
+                          color: cfg.color, background: cfg.color + '20',
+                          padding: '3px 12px', borderRadius: 20,
+                        }}>
+                          {pct}% del total
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
 
-                  {/* Barra de distribución proporcional */}
-                  {grandTotal > 0 && (
-                    <div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
-                        Distribución — Total: <strong>{fmt(grandTotal)}</strong>
-                      </div>
-                      <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', gap: 2 }}>
-                        {['efectivo', 'tarjeta', 'fri'].map(m => {
-                          const dato  = metodosPago.find(x => x.metodo === m)
-                          const total = parseFloat(dato?.total || 0)
-                          const pct   = grandTotal > 0 ? (total / grandTotal) * 100 : 0
-                          if (pct === 0) return null
-                          return (
-                            <div key={m} title={`${METODO_CONFIG[m].label}: ${fmt(total)}`}
-                              style={{ width: `${pct}%`, background: METODO_CONFIG[m].color, transition: 'width 0.4s ease' }}
-                            />
-                          )
-                        })}
-                      </div>
-                      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
-                        {['efectivo', 'tarjeta', 'fri'].map(m => (
-                          <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-                            <div style={{ width: 10, height: 10, borderRadius: 3, background: METODO_CONFIG[m].color }}/>
-                            {METODO_CONFIG[m].label}
-                          </div>
-                        ))}
-                      </div>
+                {/* Barra de distribución proporcional */}
+                {grandTotalMetodos > 0 && (
+                  <div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Distribución — Total: <strong>{fmt(grandTotalMetodos)}</strong>
                     </div>
-                  )}
-                </>
-              )
-            })()}
+                    <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', gap: 2 }}>
+                      {['efectivo', 'tarjeta', 'fri'].map(m => {
+                        const dato  = metodosPago.find(x => x.metodo === m)
+                        const total = parseFloat(dato?.total || 0)
+                        const pct   = grandTotalMetodos > 0 ? (total / grandTotalMetodos) * 100 : 0
+                        if (pct === 0) return null
+                        return (
+                          <div key={m} title={`${METODO_CONFIG[m].label}: ${fmt(total)}`}
+                            style={{ width: `${pct}%`, background: METODO_CONFIG[m].color, transition: 'width 0.4s ease' }}
+                          />
+                        )
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                      {['efectivo', 'tarjeta', 'fri'].map(m => (
+                        <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: 3, background: METODO_CONFIG[m].color }}/>
+                          {METODO_CONFIG[m].label}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
       </div>
     </div>
   )
