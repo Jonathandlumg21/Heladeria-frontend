@@ -66,9 +66,7 @@ export default function Login() {
           </button>
         </form>
 
-        <p style={{ marginTop: 20, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-          Usuario: admin@heladeria.com / admin123
-        </p>
+
       </div>
     </div>
   )
