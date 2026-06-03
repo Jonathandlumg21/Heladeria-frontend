@@ -1,0 +1,384 @@
+import { useEffect, useState } from 'react'
+import api from '../api/axios'
+import toast from 'react-hot-toast'
+
+const METODOS = [
+  { value: 'efectivo', label: 'Efectivo', icon: '💵' },
+  { value: 'tarjeta',  label: 'Tarjeta',  icon: '💳' },
+  { value: 'fri',      label: 'Fri',      icon: '📱' },
+]
+
+const METODO_LABEL = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', fri: 'Fri' }
+
+// IP de RawBT — si usas la misma tablet cambia a 'http://localhost:8080'
+// Si usas otra computadora en la red cambia a la IP de la tablet
+const RAWBT_URL = 'http://localhost:8080/rawbt'
+
+export default function Ventas() {
+  const [productos, setProductos]   = useState([])
+  const [carrito, setCarrito]       = useState([])
+  const [metodo, setMetodo]         = useState('efectivo')
+  const [busqueda, setBusqueda]     = useState('')
+  const [categoria, setCategoria]   = useState('')
+  const [categorias, setCategorias] = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [cobrando, setCobrando]     = useState(false)
+
+  const cargarProductos = () => {
+    setLoading(true)
+    api.get('/productos/pos/disponibles')
+      .then(r => {
+        setProductos(r.data)
+        const cats = [...new Set(r.data.map(p => p.categoria).filter(Boolean))]
+        setCategorias(cats)
+      })
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { cargarProductos() }, [])
+
+  const productosFiltrados = productos.filter(p => {
+    const okNombre = p.nombre.toLowerCase().includes(busqueda.toLowerCase())
+    const okCat    = !categoria || p.categoria === categoria
+    return okNombre && okCat
+  })
+
+  const agregar = (p) => {
+    if (p.unidades_disponibles === 0) return
+    setCarrito(c => {
+      const existe = c.find(x => x.id === p.id)
+      if (existe) {
+        if (existe.cantidad >= p.unidades_disponibles) {
+          toast.error(`Solo hay ${p.unidades_disponibles} disponibles`)
+          return c
+        }
+        return c.map(x => x.id === p.id ? { ...x, cantidad: x.cantidad + 1 } : x)
+      }
+      return [...c, { ...p, cantidad: 1 }]
+    })
+  }
+
+  const quitarUno = (id) =>
+    setCarrito(c => c.map(x => x.id === id
+      ? { ...x, cantidad: x.cantidad - 1 } : x
+    ).filter(x => x.cantidad > 0))
+
+  const quitarDelCarrito = (id) =>
+    setCarrito(c => c.filter(x => x.id !== id))
+
+  const total = carrito.reduce((s, i) => s + parseFloat(i.precio) * i.cantidad, 0)
+
+  // ── Impresión térmica via RawBT ──
+  const imprimirTicket = async (ventaId, totalVenta, metodoUsado, itemsVendidos) => {
+    const fecha = new Date().toLocaleString('es', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+
+    const ESC  = '\x1B'
+    const GS   = '\x1D'
+    const INIT = ESC + '\x40'
+    const CENTER   = ESC + '\x61\x01'
+    const LEFT     = ESC + '\x61\x00'
+    const RIGHT    = ESC + '\x61\x02'
+    const BIG      = ESC + '\x21\x30'
+    const BOLD_ON  = ESC + '\x45\x01'
+    const BOLD_OFF = ESC + '\x45\x00'
+    const NORMAL   = ESC + '\x21\x00'
+    const WIDE     = ESC + '\x21\x10'
+    const CUT      = GS  + '\x56\x41\x10'
+    const LINE     = '--------------------------------\n'
+
+    let t = ''
+    t += INIT
+    t += CENTER
+    t += BIG
+    t += 'HELADERIA\n'
+    t += NORMAL
+    t += LINE
+    t += `Fecha: ${fecha}\n`
+    t += `Ticket #${ventaId}\n`
+    t += LINE
+    t += LEFT
+
+    // Detalle de productos
+    itemsVendidos.forEach(i => {
+      const nombre   = i.nombre.length > 18 ? i.nombre.substring(0, 18) : i.nombre
+      const subtotal = `Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}`
+      const espacios = 32 - nombre.length - subtotal.length
+      t += `${nombre}${' '.repeat(Math.max(1, espacios))}${subtotal}\n`
+      t += `  x${i.cantidad} a Q${parseFloat(i.precio).toFixed(2)} c/u\n`
+    })
+
+    t += LINE
+    t += RIGHT
+    t += WIDE
+    t += BOLD_ON
+    t += `TOTAL: Q${totalVenta}\n`
+    t += BOLD_OFF
+    t += NORMAL
+    t += CENTER
+    t += LINE
+    t += `Pago: ${METODO_LABEL[metodoUsado]}\n`
+    t += '\n'
+    t += BOLD_ON
+    t += 'Gracias por su compra!\n'
+    t += BOLD_OFF
+    t += '\n\n\n'
+    t += CUT
+
+    try {
+      const res = await fetch(RAWBT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
+        body: t,
+      })
+      if (!res.ok) toast.error('Error al imprimir el ticket')
+    } catch (e) {
+      console.error('RawBT error:', e)
+      toast.error('No se pudo conectar con la impresora — verifica que RawBT esté activo')
+    }
+  }
+
+  // ── Cobrar ──
+  const cobrar = async () => {
+    if (!carrito.length) { toast.error('El carrito está vacío'); return }
+    setCobrando(true)
+    try {
+      const { data } = await api.post('/ventas', {
+        items: carrito.map(i => ({
+          producto_id:     i.id,
+          cantidad:        i.cantidad,
+          precio_unitario: i.precio,
+        })),
+        metodo_pago: metodo,
+      })
+      toast.success(`¡Venta registrada! Total: Q${total.toFixed(2)}`)
+      await imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito)
+      setCarrito([])
+      cargarProductos()
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al registrar la venta')
+    } finally {
+      setCobrando(false)
+    }
+  }
+
+  const getBadgeStock = (p) => {
+    if (p.unidades_disponibles === 0)  return { texto: 'Agotado',                       cls: 'badge-sinstock' }
+    if (p.unidades_disponibles <= 3)   return { texto: `Solo ${p.unidades_disponibles}`, cls: 'badge-bajo' }
+    return { texto: `${p.unidades_disponibles} disp.`, cls: 'badge-ok' }
+  }
+
+  return (
+    <div>
+      <div className="page-header">
+        <h1 className="page-title">🛒 Punto de venta</h1>
+        <button className="btn btn-outline btn-sm" onClick={cargarProductos}>
+          🔄 Actualizar
+        </button>
+      </div>
+
+      <div className="page-content" style={{
+        display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20, alignItems: 'start'
+      }}>
+
+        {/* ── CATÁLOGO ── */}
+        <div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="form-control"
+              style={{ flex: 1, minWidth: 160 }}
+              placeholder="Buscar producto..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+            />
+            <select
+              className="form-control"
+              style={{ width: 180 }}
+              value={categoria}
+              onChange={e => setCategoria(e.target.value)}
+            >
+              <option value="">Todas las categorías</option>
+              {categorias.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {loading ? (
+            <div className="loading-center"><div className="spinner"/> Cargando...</div>
+          ) : productosFiltrados.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-icon">🍦</div>
+              <p>No hay productos disponibles</p>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))',
+              gap: 12,
+            }}>
+              {productosFiltrados.map(p => {
+                const badge     = getBadgeStock(p)
+                const enCarrito = carrito.find(x => x.id === p.id)
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => agregar(p)}
+                    disabled={p.unidades_disponibles === 0}
+                    style={{
+                      background:   enCarrito ? '#eef4ff' : '#fff',
+                      border:       enCarrito ? '2px solid var(--azul)' : '1px solid var(--border)',
+                      borderRadius: 12,
+                      padding:      12,
+                      cursor:       p.unidades_disponibles === 0 ? 'not-allowed' : 'pointer',
+                      textAlign:    'center',
+                      opacity:      p.unidades_disponibles === 0 ? 0.5 : 1,
+                      transition:   'all 0.15s',
+                    }}
+                  >
+                    {p.imagen_url ? (
+                      <img
+                        src={p.imagen_url}
+                        alt={p.nombre}
+                        style={{ width: '100%', height: 90, objectFit: 'cover', borderRadius: 8, marginBottom: 8 }}
+                      />
+                    ) : (
+                      <div style={{
+                        height: 90, background: 'var(--bg)', borderRadius: 8,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 36, marginBottom: 8,
+                      }}>🍦</div>
+                    )}
+                    <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 3, lineHeight: 1.3 }}>
+                      {p.nombre}
+                    </p>
+                    <p style={{ color: 'var(--azul)', fontWeight: 700, fontSize: 14, marginBottom: 5 }}>
+                      Q{parseFloat(p.precio).toFixed(2)}
+                    </p>
+                    <span className={`badge ${badge.cls}`} style={{ fontSize: 10 }}>
+                      {badge.texto}
+                    </span>
+                    {p.tipo === 'compuesto' && p.unidades_disponibles <= 5 && p.ingrediente_limitante && (
+                      <p style={{ fontSize: 10, color: 'var(--amarillo)', marginTop: 3 }}>
+                        Falta: {p.ingrediente_limitante}
+                      </p>
+                    )}
+                    {enCarrito && (
+                      <div style={{
+                        marginTop: 5, background: 'var(--azul)', color: '#fff',
+                        borderRadius: 20, fontSize: 12, padding: '2px 8px', display: 'inline-block',
+                      }}>
+                        en carrito: {enCarrito.cantidad}
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ── CARRITO ── */}
+        <div className="card" style={{ position: 'sticky', top: 20 }}>
+          <div className="card-body">
+            <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Carrito</h3>
+
+            {carrito.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
+                Selecciona productos del catálogo
+              </p>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                {carrito.map(i => (
+                  <div key={i.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    paddingBottom: 10, marginBottom: 10,
+                    borderBottom: '1px solid var(--border)',
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontWeight: 500, fontSize: 13 }}>{i.nombre}</p>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Q{parseFloat(i.precio).toFixed(2)} c/u
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <button onClick={() => quitarUno(i.id)} style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        border: '1px solid var(--border)', background: '#fff',
+                        cursor: 'pointer', fontSize: 14, lineHeight: 1,
+                      }}>−</button>
+                      <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 600 }}>
+                        {i.cantidad}
+                      </span>
+                      <button onClick={() => agregar(i)} style={{
+                        width: 24, height: 24, borderRadius: '50%',
+                        border: '1px solid var(--border)', background: '#fff',
+                        cursor: 'pointer', fontSize: 14, lineHeight: 1,
+                      }}>+</button>
+                    </div>
+                    <div style={{ minWidth: 60, textAlign: 'right', fontWeight: 600 }}>
+                      Q{(parseFloat(i.precio) * i.cantidad).toFixed(2)}
+                    </div>
+                    <button onClick={() => quitarDelCarrito(i.id)} style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--rojo)', fontSize: 16,
+                    }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{
+              fontSize: 20, fontWeight: 700, textAlign: 'right',
+              padding: '12px 0', borderTop: '2px solid var(--border)', marginBottom: 14,
+            }}>
+              Total: Q{total.toFixed(2)}
+            </div>
+
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+              MÉTODO DE PAGO
+            </p>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {METODOS.map(m => (
+                <button
+                  key={m.value}
+                  onClick={() => setMetodo(m.value)}
+                  style={{
+                    flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
+                    borderRadius: 8, textAlign: 'center',
+                    fontWeight: metodo === m.value ? 700 : 400,
+                    border:     metodo === m.value ? '2px solid var(--azul)' : '1px solid var(--border)',
+                    background: metodo === m.value ? 'var(--azul-claro)' : '#fff',
+                    color:      metodo === m.value ? 'var(--azul)' : 'var(--text-muted)',
+                  }}
+                >
+                  <div style={{ fontSize: 18 }}>{m.icon}</div>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              className="btn btn-success w-full"
+              style={{ padding: '13px', fontSize: 15 }}
+              onClick={cobrar}
+              disabled={cobrando || carrito.length === 0}
+            >
+              {cobrando ? 'Procesando...' : `Cobrar Q${total.toFixed(2)}`}
+            </button>
+
+            {carrito.length > 0 && (
+              <button
+                className="btn btn-outline w-full"
+                style={{ marginTop: 8 }}
+                onClick={() => setCarrito([])}
+              >
+                Limpiar carrito
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
