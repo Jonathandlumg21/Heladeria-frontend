@@ -1,17 +1,15 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
 })
 
-// Adjuntar token en cada request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Manejar 401 globalmente
 api.interceptors.response.use(
   (res) => res,
   (err) => {
