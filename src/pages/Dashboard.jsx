@@ -1,17 +1,35 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
+import { useAuth } from '../context/AuthContext'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer,
 } from 'recharts'
 
+const PERIODOS = [
+  { key: 'dia',    label: 'Hoy' },
+  { key: 'semana', label: 'Semana' },
+  { key: 'mes',    label: 'Mes' },
+  { key: 'año',    label: 'Año' },
+]
+
+const METODO_CONFIG = {
+  efectivo: { label: 'Efectivo', icon: '💵', color: '#0f6e56' },
+  tarjeta:  { label: 'Tarjeta',  icon: '💳', color: '#1a56a0' },
+  fri:      { label: 'Fri',      icon: '📱', color: '#854f0b' },
+}
+
 export default function Dashboard() {
-  const [resumen, setResumen]         = useState(null)
-  const [diarias, setDiarias]         = useState([])
-  const [mensuales, setMensuales]     = useState([])
-  const [stockBajo, setStockBajo]     = useState([])
-  const [masVendidos, setMasVendidos] = useState([])
-  const [vistaMes, setVistaMes]       = useState(true)
+  const { tieneRol } = useAuth()
+  const [resumen, setResumen]           = useState(null)
+  const [diarias, setDiarias]           = useState([])
+  const [mensuales, setMensuales]       = useState([])
+  const [stockBajo, setStockBajo]       = useState([])
+  const [masVendidos, setMasVendidos]   = useState([])
+  const [vistaMes, setVistaMes]         = useState(true)
+  const [metodosPago, setMetodosPago]   = useState([])
+  const [periodoMetodos, setPeriodo]    = useState('dia')
+  const [cargandoMetodos, setCargando]  = useState(false)
 
   useEffect(() => {
     api.get('/dashboard/resumen').then(r => setResumen(r.data))
@@ -30,6 +48,15 @@ export default function Dashboard() {
       r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
     ))
   }, [])
+
+  useEffect(() => {
+    if (!tieneRol('admin')) return
+    setCargando(true)
+    api.get(`/dashboard/ventas-por-metodo?periodo=${periodoMetodos}`)
+      .then(r => setMetodosPago(r.data))
+      .catch(() => setMetodosPago([]))
+      .finally(() => setCargando(false))
+  }, [periodoMetodos])
 
   const fmt = (n) => `Q${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2 })}`
 
@@ -169,6 +196,102 @@ export default function Dashboard() {
         {stockBajo.length === 0 && resumen && (
           <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
             <p style={{ fontSize: 16 }}>✅ Todos los productos tienen stock suficiente</p>
+          </div>
+        )}
+
+        {/* Ventas por método de pago — solo admin */}
+        {tieneRol('admin') && (
+          <div className="card card-body" style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+              <h3 style={{ fontWeight: 700 }}>💰 Ventas por método de pago</h3>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {PERIODOS.map(p => (
+                  <button
+                    key={p.key}
+                    className={`btn btn-sm ${periodoMetodos === p.key ? 'btn-primary' : 'btn-outline'}`}
+                    onClick={() => setPeriodo(p.key)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {cargandoMetodos ? (
+              <div className="loading-center"><div className="spinner"/> Cargando...</div>
+            ) : (() => {
+              const grandTotal = metodosPago.reduce((s, x) => s + parseFloat(x.total || 0), 0)
+              return (
+                <>
+                  {/* Tarjetas grandes por método */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                    {['efectivo', 'tarjeta', 'fri'].map(m => {
+                      const cfg      = METODO_CONFIG[m]
+                      const dato     = metodosPago.find(x => x.metodo === m)
+                      const total    = parseFloat(dato?.total    || 0)
+                      const cantidad = parseInt  (dato?.cantidad || 0)
+                      const pct      = grandTotal > 0 ? Math.round((total / grandTotal) * 100) : 0
+                      return (
+                        <div key={m} style={{
+                          borderRadius: 12, padding: '20px 18px',
+                          background: cfg.color + '0f',
+                          border: `1.5px solid ${cfg.color}30`,
+                          textAlign: 'center',
+                        }}>
+                          <div style={{ fontSize: 28, marginBottom: 6 }}>{cfg.icon}</div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                            {cfg.label}
+                          </div>
+                          <div style={{ fontSize: 26, fontWeight: 800, color: cfg.color, marginBottom: 4 }}>
+                            {fmt(total)}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                            {cantidad} {cantidad === 1 ? 'transacción' : 'transacciones'}
+                          </div>
+                          <div style={{
+                            display: 'inline-block', fontSize: 13, fontWeight: 700,
+                            color: cfg.color, background: cfg.color + '20',
+                            padding: '3px 12px', borderRadius: 20,
+                          }}>
+                            {pct}% del total
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Barra de distribución proporcional */}
+                  {grandTotal > 0 && (
+                    <div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Distribución — Total: <strong>{fmt(grandTotal)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', height: 14, borderRadius: 8, overflow: 'hidden', gap: 2 }}>
+                        {['efectivo', 'tarjeta', 'fri'].map(m => {
+                          const dato  = metodosPago.find(x => x.metodo === m)
+                          const total = parseFloat(dato?.total || 0)
+                          const pct   = grandTotal > 0 ? (total / grandTotal) * 100 : 0
+                          if (pct === 0) return null
+                          return (
+                            <div key={m} title={`${METODO_CONFIG[m].label}: ${fmt(total)}`}
+                              style={{ width: `${pct}%`, background: METODO_CONFIG[m].color, transition: 'width 0.4s ease' }}
+                            />
+                          )
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                        {['efectivo', 'tarjeta', 'fri'].map(m => (
+                          <div key={m} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
+                            <div style={{ width: 10, height: 10, borderRadius: 3, background: METODO_CONFIG[m].color }}/>
+                            {METODO_CONFIG[m].label}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
         )}
       </div>
