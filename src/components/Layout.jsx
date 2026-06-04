@@ -7,6 +7,7 @@ const NAV = [
   { to: '/inventario', icon: '📦', label: 'Inventario',     roles: ['admin','vendedor','bodeguero'] },
   { to: '/dashboard',  icon: '📊', label: 'Dashboard',      roles: ['admin'] },
   { to: '/productos',  icon: '🍦', label: 'Productos',      roles: ['admin'] },
+  { to: '/reportes',   icon: '📋', label: 'Reportes',        roles: ['admin'] },
   { to: '/admin',      icon: '⚙️', label: 'Administración', roles: ['admin'] },
 ]
 

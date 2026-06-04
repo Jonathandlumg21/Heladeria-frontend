@@ -8,6 +8,7 @@ import Inventario from './pages/Inventario'
 import Dashboard  from './pages/Dashboard'
 import Productos  from './pages/Productos'
 import Admin      from './pages/Admin'
+import Reportes   from './pages/Reportes'
 
 function AppRoutes() {
   const { usuario } = useAuth()
@@ -51,6 +52,12 @@ function AppRoutes() {
       <Route path="/admin" element={
         <RutaProtegida roles={['admin']}>
           <Layout><Admin /></Layout>
+        </RutaProtegida>
+      } />
+
+      <Route path="/reportes" element={
+        <RutaProtegida roles={['admin']}>
+          <Layout><Reportes /></Layout>
         </RutaProtegida>
       } />
 
