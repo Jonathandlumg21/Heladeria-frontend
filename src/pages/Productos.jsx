@@ -247,7 +247,7 @@ export default function Productos() {
                     </div>
                   </div>
 
-                  {modal === 'crear' && !esEspecialidades && (
+                  {modal === 'crear' && !esEspecialidades && form.tipo !== 'compuesto' && (
                     <div className="form-group">
                       <label className="form-label">Stock inicial</label>
                       <input type="number" className="form-control" min="0"
