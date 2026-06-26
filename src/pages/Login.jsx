@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
+import logo from '../assets/logo.png'
 
 export default function Login() {
   const [email, setEmail]       = useState('')
@@ -29,7 +30,14 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-logo">🍦</div>
+        <div className="login-logo">
+          <img src={logo} alt="Logo" style={{
+            width: 90, height: 90, borderRadius: '50%',
+            objectFit: 'cover',
+            border: '4px solid var(--azul)',
+            boxShadow: '0 4px 20px rgba(26,86,160,0.25)',
+          }}/>
+        </div>
         <h1 className="login-title">Heladería POS</h1>
         <p className="login-sub">Ingresa tus credenciales para continuar</p>
 

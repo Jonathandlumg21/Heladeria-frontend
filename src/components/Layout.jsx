@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import logo from '../assets/logo.png'
 
 const NAV = [
   { to: '/ventas',     icon: '🛒', label: 'Ventas',         roles: ['admin','vendedor'] },
@@ -35,7 +36,12 @@ export default function Layout({ children }) {
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <span>🍦</span> Heladería
+          <img src={logo} alt="Logo" style={{
+            width: 38, height: 38, borderRadius: '50%',
+            objectFit: 'cover', border: '2px solid rgba(255,255,255,0.4)',
+            flexShrink: 0,
+          }}/>
+          Heladería
         </div>
 
         <nav className="sidebar-nav">
@@ -64,7 +70,13 @@ export default function Layout({ children }) {
       <main className="main">
         <div className="topbar">
           <button className="btn-menu" onClick={() => setSidebarOpen(true)}>☰</button>
-          <span className="topbar-title">🍦 Heladería</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <img src={logo} alt="Logo" style={{
+              width: 30, height: 30, borderRadius: '50%',
+              objectFit: 'cover', border: '2px solid rgba(255,255,255,0.4)',
+            }}/>
+            <span className="topbar-title">Heladería</span>
+          </div>
           <span/>
         </div>
         {children}
