@@ -17,9 +17,16 @@ const PALETA = [
   { bg: '#fce7f3', color: '#9d174d' },
   { bg: '#ccfbf1', color: '#0f766e' },
   { bg: '#e0e7ff', color: '#4338ca' },
+  { bg: '#fef2f2', color: '#b91c1c' },
+  { bg: '#f0fdf4', color: '#166534' },
+  { bg: '#fff7ed', color: '#9a3412' },
+  { bg: '#fdf4ff', color: '#7e22ce' },
 ]
 
-const colorCat = (id) => id ? PALETA[(id - 1) % PALETA.length] : null
+const colorCat = (categoria_id, categorias) => {
+  const idx = categorias.findIndex(c => String(c.id) === String(categoria_id))
+  return idx >= 0 ? PALETA[idx % PALETA.length] : null
+}
 
 export default function Productos() {
   const [productos, setProductos]   = useState([])
@@ -152,8 +159,8 @@ export default function Productos() {
                     <td>{p.stock} {p.unidad}</td>
                     <td>
                       {p.categoria ? (() => {
-                        const c = colorCat(p.categoria_id)
-                        return (
+                        const c = colorCat(p.categoria_id, categorias)
+                        return c ? (
                           <span style={{
                             display: 'inline-block', fontSize: 12, fontWeight: 600,
                             padding: '3px 10px', borderRadius: 20,
@@ -161,7 +168,7 @@ export default function Productos() {
                           }}>
                             {p.categoria}
                           </span>
-                        )
+                        ) : <span className="text-muted">{p.categoria}</span>
                       })() : <span className="text-muted">—</span>}
                     </td>
                     <td>
