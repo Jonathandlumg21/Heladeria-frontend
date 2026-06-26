@@ -8,6 +8,19 @@ const VACÍO = {
   unidad: 'unidades', tipo: 'simple', categoria_id: '',
 }
 
+const PALETA = [
+  { bg: '#dbeafe', color: '#1d4ed8' },
+  { bg: '#dcfce7', color: '#15803d' },
+  { bg: '#fef9c3', color: '#a16207' },
+  { bg: '#ede9fe', color: '#6d28d9' },
+  { bg: '#ffedd5', color: '#c2410c' },
+  { bg: '#fce7f3', color: '#9d174d' },
+  { bg: '#ccfbf1', color: '#0f766e' },
+  { bg: '#e0e7ff', color: '#4338ca' },
+]
+
+const colorCat = (id) => id ? PALETA[(id - 1) % PALETA.length] : null
+
 export default function Productos() {
   const [productos, setProductos]   = useState([])
   const [categorias, setCategorias] = useState([])
@@ -137,7 +150,20 @@ export default function Productos() {
                     <td><span className={`badge ${p.tipo === 'compuesto' ? 'badge-admin' : 'badge-ok'}`}>{p.tipo}</span></td>
                     <td>Q{parseFloat(p.precio).toFixed(2)}</td>
                     <td>{p.stock} {p.unidad}</td>
-                    <td className="text-muted">{p.categoria || '—'}</td>
+                    <td>
+                      {p.categoria ? (() => {
+                        const c = colorCat(p.categoria_id)
+                        return (
+                          <span style={{
+                            display: 'inline-block', fontSize: 12, fontWeight: 600,
+                            padding: '3px 10px', borderRadius: 20,
+                            background: c.bg, color: c.color,
+                          }}>
+                            {p.categoria}
+                          </span>
+                        )
+                      })() : <span className="text-muted">—</span>}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-outline btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
