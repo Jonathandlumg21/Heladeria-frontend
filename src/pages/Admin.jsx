@@ -7,16 +7,46 @@ const ROL_LABEL = { admin: 'Administrador', vendedor: 'Vendedor', bodeguero: 'Bo
 const ROL_BADGE = { admin: 'badge-admin', vendedor: 'badge-vendedor', bodeguero: 'badge-bodeguero' }
 
 export default function Admin() {
-  const [usuarios, setUsuarios]       = useState([])
-  const [modal, setModal]             = useState(null)
-  const [form, setForm]               = useState(VACÍO)
-  const [usuarioActivo, setUserActivo] = useState(null)
-  const [modalPass, setModalPass]     = useState(null)
-  const [nuevaPass, setNuevaPass]     = useState('')
-  const [guardando, setGuardando]     = useState(false)
+  const [usuarios, setUsuarios]         = useState([])
+  const [modal, setModal]               = useState(null)
+  const [form, setForm]                 = useState(VACÍO)
+  const [usuarioActivo, setUserActivo]  = useState(null)
+  const [modalPass, setModalPass]       = useState(null)
+  const [nuevaPass, setNuevaPass]       = useState('')
+  const [guardando, setGuardando]       = useState(false)
+  const [categorias, setCategorias]     = useState([])
+  const [nuevaCat, setNuevaCat]         = useState('')
+  const [guardandoCat, setGuardandoCat] = useState(false)
 
   const cargar = () => api.get('/usuarios').then(r => setUsuarios(r.data))
-  useEffect(() => { cargar() }, [])
+  const cargarCats = () => api.get('/usuarios/categorias').then(r => setCategorias(r.data))
+  useEffect(() => { cargar(); cargarCats() }, [])
+
+  const agregarCategoria = async () => {
+    if (!nuevaCat.trim()) return
+    setGuardandoCat(true)
+    try {
+      await api.post('/usuarios/categorias', { nombre: nuevaCat.trim() })
+      toast.success('Categoría agregada')
+      setNuevaCat('')
+      cargarCats()
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al agregar')
+    } finally {
+      setGuardandoCat(false)
+    }
+  }
+
+  const eliminarCategoria = async (cat) => {
+    if (!confirm(`¿Eliminar la categoría "${cat.nombre}"?`)) return
+    try {
+      await api.delete(`/usuarios/categorias/${cat.id}`)
+      toast.success('Categoría eliminada')
+      cargarCats()
+    } catch {
+      toast.error('Error al eliminar')
+    }
+  }
 
   const abrirCrear = () => {
     setForm(VACÍO); setModal('crear'); setUserActivo(null)
@@ -87,6 +117,46 @@ export default function Admin() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Gestión de categorías */}
+        <div className="card card-body" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>🏷️ Categorías de productos</h3>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+            <input
+              className="form-control"
+              style={{ maxWidth: 260 }}
+              placeholder="Nueva categoría..."
+              value={nuevaCat}
+              onChange={e => setNuevaCat(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && agregarCategoria()}
+            />
+            <button className="btn btn-primary" onClick={agregarCategoria} disabled={guardandoCat || !nuevaCat.trim()}>
+              {guardandoCat ? 'Agregando...' : '+ Agregar'}
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {categorias.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No hay categorías registradas</p>
+            ) : categorias.map(cat => (
+              <div key={cat.id} style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'var(--azul-claro)', color: 'var(--azul)',
+                borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 600,
+              }}>
+                {cat.nombre}
+                <button
+                  onClick={() => eliminarCategoria(cat)}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    color: 'var(--azul)', fontSize: 15, lineHeight: 1, padding: 0,
+                    opacity: 0.6,
+                  }}
+                  title="Eliminar categoría"
+                >✕</button>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="card">
