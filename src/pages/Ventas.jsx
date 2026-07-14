@@ -10,9 +10,6 @@ const METODOS = [
 
 const METODO_LABEL = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', fri: 'Fri' }
 
-// IP de RawBT — si usas la misma tablet cambia a 'http://localhost:8080'
-// Si usas otra computadora en la red cambia a la IP de la tablet
-const RAWBT_URL = 'http://localhost:8080/rawbt'
 
 export default function Ventas() {
   const [productos, setProductos]   = useState([])
@@ -72,7 +69,7 @@ export default function Ventas() {
   const vuelto     = metodo === 'efectivo' && pagaConNum > 0 ? pagaConNum - total : null
 
   // ── Impresión térmica via RawBT ──
-  const imprimirTicket = async (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
+  const imprimirTicket = (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
     const fecha = new Date().toLocaleString('es', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
@@ -135,15 +132,11 @@ export default function Ventas() {
     t += CUT
 
     try {
-      const res = await fetch(RAWBT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain; charset=UTF-8' },
-        body: t,
-      })
-      if (!res.ok) toast.error('Error al imprimir el ticket')
+      const base64 = btoa(unescape(encodeURIComponent(t)))
+      window.location.href = `rawbt://${base64}`
     } catch (e) {
-      console.error('RawBT error:', e)
-      toast.error('No se pudo conectar con la impresora — verifica que RawBT esté activo')
+      console.error('RawBT intent error:', e)
+      toast.error('No se pudo abrir la impresora')
     }
   }
 
@@ -161,7 +154,7 @@ export default function Ventas() {
         metodo_pago: metodo,
       })
       toast.success(`¡Venta registrada! Total: Q${total.toFixed(2)}`)
-      await imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito, pagaConNum)
+      imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito, pagaConNum)
       setCarrito([])
       setPagaCon('')
       cargarProductos()
