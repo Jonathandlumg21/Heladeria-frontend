@@ -22,15 +22,18 @@ export default function Inventario() {
 
   const filtrados = productos.filter(p => {
     const okNombre = p.nombre.toLowerCase().includes(filtro.toLowerCase())
+    // Los compuestos no tienen estado propio — se excluyen al filtrar por estado
+    if (estado && p.tipo === 'compuesto') return false
     const okEstado = !estado || p.estado_stock === estado
     return okNombre && okEstado
   })
 
+  const simples = productos.filter(p => p.tipo !== 'compuesto')
   const stats = {
     total:    productos.length,
-    ok:       productos.filter(p => p.estado_stock === 'ok').length,
-    bajo:     productos.filter(p => p.estado_stock === 'bajo').length,
-    sinstock: productos.filter(p => p.estado_stock === 'sin_stock').length,
+    ok:       simples.filter(p => p.estado_stock === 'ok').length,
+    bajo:     simples.filter(p => p.estado_stock === 'bajo').length,
+    sinstock: simples.filter(p => p.estado_stock === 'sin_stock').length,
   }
 
   const abrirEntrada = (p) => {
@@ -70,9 +73,10 @@ export default function Inventario() {
     }
   }
 
-  const badgeEstado = (e) => {
-    if (e === 'sin_stock') return <span className="badge badge-sinstock">Sin stock</span>
-    if (e === 'bajo')      return <span className="badge badge-bajo">Stock bajo</span>
+  const badgeEstado = (p) => {
+    if (p.tipo === 'compuesto')        return <span className="badge badge-admin">Derivado</span>
+    if (p.estado_stock === 'sin_stock') return <span className="badge badge-sinstock">Sin stock</span>
+    if (p.estado_stock === 'bajo')      return <span className="badge badge-bajo">Stock bajo</span>
     return <span className="badge badge-ok">OK</span>
   }
 
@@ -170,19 +174,21 @@ export default function Inventario() {
                       <td style={{ fontWeight: 700, fontSize: 15 }}>{p.stock}</td>
                       <td className="text-muted">{p.stock_minimo}</td>
                       <td className="text-muted">{p.unidad}</td>
-                      <td>{badgeEstado(p.estado_stock)}</td>
+                      <td>{badgeEstado(p)}</td>
                       {tieneRol('admin', 'bodeguero') && (
                         <td>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-success btn-sm" onClick={() => abrirEntrada(p)}>
-                              + Entrada
-                            </button>
-                            {tieneRol('admin') && (
-                              <button className="btn btn-outline btn-sm" onClick={() => abrirAjuste(p)}>
-                                Ajustar
+                          {p.tipo !== 'compuesto' && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button className="btn btn-success btn-sm" onClick={() => abrirEntrada(p)}>
+                                + Entrada
                               </button>
-                            )}
-                          </div>
+                              {tieneRol('admin') && (
+                                <button className="btn btn-outline btn-sm" onClick={() => abrirAjuste(p)}>
+                                  Ajustar
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                       )}
                     </tr>
