@@ -68,85 +68,69 @@ export default function Ventas() {
   const pagaConNum = parseFloat(pagaCon) || 0
   const vuelto     = metodo === 'efectivo' && pagaConNum > 0 ? pagaConNum - total : null
 
-  // ── Impresión térmica via RawBT ──
+  // ── Impresión via diálogo nativo de Android ──
   const imprimirTicket = (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
     const fecha = new Date().toLocaleString('es', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     })
 
-    const ESC  = '\x1B'
-    const GS   = '\x1D'
-    const INIT = ESC + '\x40'
-    const CENTER   = ESC + '\x61\x01'
-    const LEFT     = ESC + '\x61\x00'
-    const RIGHT    = ESC + '\x61\x02'
-    const BIG      = ESC + '\x21\x30'
-    const BOLD_ON  = ESC + '\x45\x01'
-    const BOLD_OFF = ESC + '\x45\x00'
-    const NORMAL   = ESC + '\x21\x00'
-    const WIDE     = ESC + '\x21\x10'
-    const CUT      = GS  + '\x56\x41\x10'
-    const LINE     = '--------------------------------\n'
+    const filas = itemsVendidos.map(i => `
+      <tr>
+        <td style="padding:2px 0">${i.nombre}</td>
+        <td style="text-align:right;padding:2px 0;white-space:nowrap">Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td colspan="2" style="color:#555;font-size:10px;padding-bottom:4px">
+          &nbsp;&nbsp;x${i.cantidad} a Q${parseFloat(i.precio).toFixed(2)} c/u
+        </td>
+      </tr>
+    `).join('')
 
-    let t = ''
-    t += INIT
-    t += CENTER
-    t += BIG
-    t += 'HELADERIA\n'
-    t += NORMAL
-    t += LINE
-    t += `Fecha: ${fecha}\n`
-    t += `Ticket #${ventaId}\n`
-    t += LINE
-    t += LEFT
+    const vueltoHtml = metodoUsado === 'efectivo' && pagoCliente > 0 ? `
+      <tr><td>Entrega</td><td style="text-align:right">Q${pagoCliente.toFixed(2)}</td></tr>
+      <tr><td><b>Vuelto</b></td><td style="text-align:right"><b>Q${(pagoCliente - parseFloat(totalVenta)).toFixed(2)}</b></td></tr>
+    ` : ''
 
-    // Detalle de productos
-    itemsVendidos.forEach(i => {
-      const nombre   = i.nombre.length > 18 ? i.nombre.substring(0, 18) : i.nombre
-      const subtotal = `Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}`
-      const espacios = 32 - nombre.length - subtotal.length
-      t += `${nombre}${' '.repeat(Math.max(1, espacios))}${subtotal}\n`
-      t += `  x${i.cantidad} a Q${parseFloat(i.precio).toFixed(2)} c/u\n`
-    })
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>
+      @page { size: 80mm auto; margin: 3mm; }
+      * { box-sizing: border-box; }
+      body { font-family: monospace; font-size: 12px; width: 74mm; margin: 0; }
+      .centro { text-align: center; }
+      .titulo { font-size: 18px; font-weight: bold; }
+      hr { border: none; border-top: 1px dashed #000; margin: 6px 0; }
+      table { width: 100%; border-collapse: collapse; }
+      .total-row td { font-size: 14px; font-weight: bold; padding-top: 4px; }
+    </style></head><body>
+      <div class="centro titulo">HELADERIA</div>
+      <hr>
+      <div>Fecha: ${fecha}</div>
+      <div>Ticket #${ventaId}</div>
+      <hr>
+      <table>${filas}</table>
+      <hr>
+      <table>
+        <tr class="total-row">
+          <td>TOTAL</td>
+          <td style="text-align:right">Q${totalVenta}</td>
+        </tr>
+        ${vueltoHtml}
+        <tr><td style="padding-top:4px">Pago</td><td style="text-align:right;padding-top:4px">${METODO_LABEL[metodoUsado]}</td></tr>
+      </table>
+      <hr>
+      <div class="centro"><b>Gracias por su compra!</b></div>
+    </body></html>`
 
-    t += LINE
-    t += RIGHT
-    t += WIDE
-    t += BOLD_ON
-    t += `TOTAL: Q${totalVenta}\n`
-    t += BOLD_OFF
-    t += NORMAL
-    t += CENTER
-    t += LINE
-    t += `Pago: ${METODO_LABEL[metodoUsado]}\n`
-    if (metodoUsado === 'efectivo' && pagoCliente > 0) {
-      t += `Entrega: Q${pagoCliente.toFixed(2)}\n`
-      t += `Vuelto:  Q${(pagoCliente - parseFloat(totalVenta)).toFixed(2)}\n`
-    }
-    t += '\n'
-    t += BOLD_ON
-    t += 'Gracias por su compra!\n'
-    t += BOLD_OFF
-    t += '\n\n\n'
-    t += CUT
-
-    try {
-      // base64url: reemplaza +→- /→_ y quita = para evitar corrupción en la URI
-      const base64url = btoa(unescape(encodeURIComponent(t)))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '')
-      const a = document.createElement('a')
-      a.href = `rawbt://${base64url}`
-      a.style.display = 'none'
-      document.body.appendChild(a)
-      a.click()
-      setTimeout(() => document.body.removeChild(a), 500)
-    } catch (e) {
-      console.error('RawBT intent error:', e)
-      toast.error('No se pudo abrir la impresora')
-    }
+    const iframe = document.createElement('iframe')
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;opacity:0'
+    document.body.appendChild(iframe)
+    iframe.contentDocument.open()
+    iframe.contentDocument.write(html)
+    iframe.contentDocument.close()
+    iframe.contentWindow.focus()
+    iframe.contentWindow.print()
+    setTimeout(() => document.body.removeChild(iframe), 2000)
   }
 
   // ── Cobrar ──
