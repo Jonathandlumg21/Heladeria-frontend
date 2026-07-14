@@ -89,7 +89,7 @@ export default function Ventas() {
     style.textContent = `
       @media print {
         @page { size: 80mm auto; margin: 2mm 4mm; }
-        body > * { display: none !important; }
+        #root { display: none !important; }
         #recibo-print { display: block !important; }
       }
       #recibo-print { display: none; }
@@ -101,7 +101,7 @@ export default function Ventas() {
         setRecibo(null)
         document.getElementById('__print_style__')?.remove()
       }, 800)
-    }, 200)
+    }, 600)
     return () => clearTimeout(t)
   }, [recibo])
 
