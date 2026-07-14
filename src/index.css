@@ -27,6 +27,7 @@ body {
 .sidebar {
   width: 220px; background: var(--azul); color: #fff;
   display: flex; flex-direction: column; flex-shrink: 0;
+  height: 100vh; position: sticky; top: 0; overflow: hidden;
 }
 .sidebar-logo {
   padding: 24px 20px 20px;
@@ -34,7 +35,7 @@ body {
   border-bottom: 1px solid rgba(255,255,255,0.15);
 }
 .sidebar-logo span { font-size: 24px; margin-right: 8px; }
-.sidebar-nav { flex: 1; padding: 12px 0; }
+.sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 20px; cursor: pointer; font-size: 14px;
@@ -241,6 +242,8 @@ tr:hover td { background: #fafbfc; }
     left: -240px;
     top: 0; bottom: 0;
     z-index: 200;
+    height: 100vh;
+    overflow: hidden;
     transition: left 0.25s ease;
   }
   .sidebar.open { left: 0; }
