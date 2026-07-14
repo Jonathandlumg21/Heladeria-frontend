@@ -38,7 +38,7 @@ function AppRoutes() {
       } />
 
       <Route path="/dashboard" element={
-        <RutaProtegida roles={['admin']}>
+        <RutaProtegida roles={['admin', 'vendedor']}>
           <Layout><Dashboard /></Layout>
         </RutaProtegida>
       } />
