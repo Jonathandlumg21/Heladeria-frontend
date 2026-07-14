@@ -133,7 +133,12 @@ export default function Ventas() {
 
     try {
       const base64 = btoa(unescape(encodeURIComponent(t)))
-      window.location.href = `rawbt://${base64}`
+      const a = document.createElement('a')
+      a.href = `rawbt://${base64}`
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      setTimeout(() => document.body.removeChild(a), 500)
     } catch (e) {
       console.error('RawBT intent error:', e)
       toast.error('No se pudo abrir la impresora')
