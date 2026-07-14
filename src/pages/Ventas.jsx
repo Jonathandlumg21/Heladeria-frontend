@@ -83,7 +83,6 @@ export default function Ventas() {
 
   useEffect(() => {
     if (!recibo) return
-    // Inyectar estilos de impresión: oculta TODO excepto el recibo
     const style = document.createElement('style')
     style.id = '__print_style__'
     style.textContent = `
@@ -95,14 +94,20 @@ export default function Ventas() {
       #recibo-print { display: none; }
     `
     document.head.appendChild(style)
-    const t = setTimeout(() => {
-      window.print()
-      setTimeout(() => {
-        setRecibo(null)
-        document.getElementById('__print_style__')?.remove()
-      }, 800)
-    }, 600)
-    return () => clearTimeout(t)
+
+    const limpiar = () => {
+      setRecibo(null)
+      document.getElementById('__print_style__')?.remove()
+    }
+    // afterprint dispara cuando el diálogo cierra (tras imprimir o cancelar)
+    window.addEventListener('afterprint', limpiar, { once: true })
+
+    const t = setTimeout(() => { window.print() }, 600)
+
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('afterprint', limpiar)
+    }
   }, [recibo])
 
   // ── Cobrar ──
