@@ -157,19 +157,19 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stock bajo */}
-        {stockBajo.length > 0 && (
+        {/* Stock bajo — excluye Especialidades (stock derivado) */}
+        {stockBajo.filter(p => p.categoria !== 'Especialidades').length > 0 && (
           <div className="card">
             <div className="card-body">
               <h3 style={{ fontWeight: 700, marginBottom: 16, color: 'var(--rojo)' }}>
-                ⚠️ Productos con stock bajo ({stockBajo.length})
+                ⚠️ Productos con stock bajo ({stockBajo.filter(p => p.categoria !== 'Especialidades').length})
               </h3>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
                 gap: 12,
               }}>
-                {stockBajo.map(p => (
+                {stockBajo.filter(p => p.categoria !== 'Especialidades').map(p => (
                   <div key={p.id} style={{
                     background: '#fff8f8', border: '1px solid #ffd0d0',
                     borderRadius: 10, padding: 14, display: 'flex', gap: 12, alignItems: 'center',
@@ -194,7 +194,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {stockBajo.length === 0 && resumen && (
+        {stockBajo.filter(p => p.categoria !== 'Especialidades').length === 0 && resumen && (
           <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
             <p style={{ fontSize: 16 }}>✅ Todos los productos tienen stock suficiente</p>
           </div>
