@@ -32,21 +32,23 @@ export default function Dashboard() {
   const [cargandoMetodos, setCargando]  = useState(false)
 
   useEffect(() => {
-    api.get('/dashboard/resumen').then(r => setResumen(r.data))
-    api.get('/dashboard/ventas-diarias').then(r => setDiarias(
-      r.data.map(d => ({
-        ...d,
-        dia:   new Date(d.dia).toLocaleDateString('es', { day: '2-digit', month: 'short' }),
-        total: parseFloat(d.total),
-      }))
-    ))
-    api.get('/dashboard/ventas-mensuales').then(r => setMensuales(
-      r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
-    ))
-    api.get('/dashboard/stock-bajo').then(r => setStockBajo(r.data))
-    api.get('/dashboard/productos-mas-vendidos').then(r => setMasVendidos(
-      r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
-    ))
+    if (tieneRol('admin')) {
+      api.get('/dashboard/resumen').then(r => setResumen(r.data))
+      api.get('/dashboard/ventas-diarias').then(r => setDiarias(
+        r.data.map(d => ({
+          ...d,
+          dia:   new Date(d.dia).toLocaleDateString('es', { day: '2-digit', month: 'short' }),
+          total: parseFloat(d.total),
+        }))
+      ))
+      api.get('/dashboard/ventas-mensuales').then(r => setMensuales(
+        r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
+      ))
+      api.get('/dashboard/stock-bajo').then(r => setStockBajo(r.data))
+      api.get('/dashboard/productos-mas-vendidos').then(r => setMasVendidos(
+        r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
+      ))
+    }
   }, [])
 
   useEffect(() => {
