@@ -21,10 +21,10 @@ export default function Inventario() {
   useEffect(() => { cargar() }, [])
 
   // Productos cuyo stock es derivado: no tienen estado propio gestionable
-  const esDerivado = (p) => p.tipo === 'compuesto' || p.categoria === 'Especialidad'
+  const esDerivado = (p) => p.tipo === 'compuesto' || p.categoria === 'Especialidades'
 
   const filtrados = productos.filter(p => {
-    if (p.categoria === 'Especialidad') return false
+    if (p.categoria === 'Especialidades') return false
     const okNombre = p.nombre.toLowerCase().includes(filtro.toLowerCase())
     if (estado && esDerivado(p)) return false
     const okEstado = !estado || p.estado_stock === estado
@@ -33,7 +33,7 @@ export default function Inventario() {
 
   const simples = productos.filter(p => !esDerivado(p))
   const stats = {
-    total:    productos.filter(p => p.categoria !== 'Especialidad').length,
+    total:    productos.filter(p => p.categoria !== 'Especialidades').length,
     ok:       simples.filter(p => p.estado_stock === 'ok').length,
     bajo:     simples.filter(p => p.estado_stock === 'bajo').length,
     sinstock: simples.filter(p => p.estado_stock === 'sin_stock').length,
