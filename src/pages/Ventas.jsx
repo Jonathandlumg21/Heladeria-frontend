@@ -132,9 +132,13 @@ export default function Ventas() {
     t += CUT
 
     try {
-      const base64 = btoa(unescape(encodeURIComponent(t)))
+      // base64url: reemplaza +→- /→_ y quita = para evitar corrupción en la URI
+      const base64url = btoa(unescape(encodeURIComponent(t)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '')
       const a = document.createElement('a')
-      a.href = `rawbt://${base64}`
+      a.href = `rawbt://${base64url}`
       a.style.display = 'none'
       document.body.appendChild(a)
       a.click()
