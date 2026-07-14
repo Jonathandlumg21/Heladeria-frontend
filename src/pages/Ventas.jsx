@@ -23,6 +23,7 @@ export default function Ventas() {
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading]       = useState(true)
   const [cobrando, setCobrando]     = useState(false)
+  const [pagaCon, setPagaCon]       = useState('')
 
   const cargarProductos = () => {
     setLoading(true)
@@ -66,10 +67,12 @@ export default function Ventas() {
   const quitarDelCarrito = (id) =>
     setCarrito(c => c.filter(x => x.id !== id))
 
-  const total = carrito.reduce((s, i) => s + parseFloat(i.precio) * i.cantidad, 0)
+  const total      = carrito.reduce((s, i) => s + parseFloat(i.precio) * i.cantidad, 0)
+  const pagaConNum = parseFloat(pagaCon) || 0
+  const vuelto     = metodo === 'efectivo' && pagaConNum > 0 ? pagaConNum - total : null
 
   // ── Impresión térmica via RawBT ──
-  const imprimirTicket = async (ventaId, totalVenta, metodoUsado, itemsVendidos) => {
+  const imprimirTicket = async (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
     const fecha = new Date().toLocaleString('es', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
@@ -120,6 +123,10 @@ export default function Ventas() {
     t += CENTER
     t += LINE
     t += `Pago: ${METODO_LABEL[metodoUsado]}\n`
+    if (metodoUsado === 'efectivo' && pagoCliente > 0) {
+      t += `Entrega: Q${pagoCliente.toFixed(2)}\n`
+      t += `Vuelto:  Q${(pagoCliente - parseFloat(totalVenta)).toFixed(2)}\n`
+    }
     t += '\n'
     t += BOLD_ON
     t += 'Gracias por su compra!\n'
@@ -154,8 +161,9 @@ export default function Ventas() {
         metodo_pago: metodo,
       })
       toast.success(`¡Venta registrada! Total: Q${total.toFixed(2)}`)
-      await imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito)
+      await imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito, pagaConNum)
       setCarrito([])
+      setPagaCon('')
       cargarProductos()
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error al registrar la venta')
@@ -335,6 +343,46 @@ export default function Ventas() {
               Total: Q{total.toFixed(2)}
             </div>
 
+            {metodo === 'efectivo' && (
+              <div style={{ marginBottom: 14 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                  PAGO DEL CLIENTE
+                </p>
+                <div style={{ position: 'relative' }}>
+                  <span style={{
+                    position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                    fontWeight: 700, color: 'var(--text-muted)', fontSize: 15,
+                  }}>Q</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.50"
+                    placeholder="0.00"
+                    value={pagaCon}
+                    onChange={e => setPagaCon(e.target.value)}
+                    style={{
+                      width: '100%', padding: '9px 10px 9px 24px', fontSize: 16,
+                      border: '1px solid var(--border)', borderRadius: 8,
+                      boxSizing: 'border-box', outline: 'none',
+                    }}
+                  />
+                </div>
+                {vuelto !== null && (
+                  <div style={{
+                    marginTop: 8, padding: '8px 12px', borderRadius: 8, textAlign: 'right',
+                    fontSize: 16, fontWeight: 700,
+                    background: vuelto >= 0 ? '#e6f9ed' : '#fde8e8',
+                    color:      vuelto >= 0 ? '#1a7f3c' : 'var(--rojo)',
+                    border:     vuelto >= 0 ? '1px solid #a3d9b1' : '1px solid #f5a0a0',
+                  }}>
+                    {vuelto >= 0
+                      ? `Vuelto: Q${vuelto.toFixed(2)}`
+                      : `Falta: Q${Math.abs(vuelto).toFixed(2)}`}
+                  </div>
+                )}
+              </div>
+            )}
+
             <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
               MÉTODO DE PAGO
             </p>
@@ -342,7 +390,7 @@ export default function Ventas() {
               {METODOS.map(m => (
                 <button
                   key={m.value}
-                  onClick={() => setMetodo(m.value)}
+                  onClick={() => { setMetodo(m.value); if (m.value !== 'efectivo') setPagaCon('') }}
                   style={{
                     flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
                     borderRadius: 8, textAlign: 'center',
