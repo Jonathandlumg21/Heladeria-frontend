@@ -20,17 +20,20 @@ export default function Inventario() {
 
   useEffect(() => { cargar() }, [])
 
+  // Productos cuyo stock es derivado: no tienen estado propio gestionable
+  const esDerivado = (p) => p.tipo === 'compuesto' || p.categoria === 'Especialidad'
+
   const filtrados = productos.filter(p => {
+    if (p.categoria === 'Especialidad') return false
     const okNombre = p.nombre.toLowerCase().includes(filtro.toLowerCase())
-    // Los compuestos no tienen estado propio — se excluyen al filtrar por estado
-    if (estado && p.tipo === 'compuesto') return false
+    if (estado && esDerivado(p)) return false
     const okEstado = !estado || p.estado_stock === estado
     return okNombre && okEstado
   })
 
-  const simples = productos.filter(p => p.tipo !== 'compuesto')
+  const simples = productos.filter(p => !esDerivado(p))
   const stats = {
-    total:    productos.length,
+    total:    productos.filter(p => p.categoria !== 'Especialidad').length,
     ok:       simples.filter(p => p.estado_stock === 'ok').length,
     bajo:     simples.filter(p => p.estado_stock === 'bajo').length,
     sinstock: simples.filter(p => p.estado_stock === 'sin_stock').length,
@@ -74,7 +77,7 @@ export default function Inventario() {
   }
 
   const badgeEstado = (p) => {
-    if (p.tipo === 'compuesto')        return <span className="badge badge-admin">Derivado</span>
+    if (esDerivado(p))                 return <span className="badge badge-admin">Derivado</span>
     if (p.estado_stock === 'sin_stock') return <span className="badge badge-sinstock">Sin stock</span>
     if (p.estado_stock === 'bajo')      return <span className="badge badge-bajo">Stock bajo</span>
     return <span className="badge badge-ok">OK</span>
@@ -177,7 +180,7 @@ export default function Inventario() {
                       <td>{badgeEstado(p)}</td>
                       {tieneRol('admin', 'bodeguero') && (
                         <td>
-                          {p.tipo !== 'compuesto' && (
+                          {!esDerivado(p) && (
                             <div style={{ display: 'flex', gap: 6 }}>
                               <button className="btn btn-success btn-sm" onClick={() => abrirEntrada(p)}>
                                 + Entrada
