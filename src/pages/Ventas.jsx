@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import logo from '../assets/logo.png'
 
 const METODOS = [
   { value: 'efectivo', label: 'Efectivo', icon: '💵' },
@@ -87,7 +88,7 @@ export default function Ventas() {
     style.id = '__print_style__'
     style.textContent = `
       @media print {
-        @page { size: 80mm auto; margin: 3mm; }
+        @page { size: 80mm auto; margin: 2mm 4mm; }
         body > * { display: none !important; }
         #recibo-print { display: block !important; }
       }
@@ -387,24 +388,27 @@ export default function Ventas() {
 
     {/* Recibo — invisible en pantalla, visible solo al imprimir */}
     {recibo && createPortal(
-      <div id="recibo-print" style={{ fontFamily: 'monospace', fontSize: 12, width: '74mm', margin: 0 }}>
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18 }}>HELADERIA</div>
-        <hr style={{ borderTop: '1px dashed #000', margin: '6px 0' }}/>
+      <div id="recibo-print" style={{ fontFamily: 'monospace', fontSize: 15, width: '72mm', margin: 0 }}>
+        <div style={{ textAlign: 'center', marginBottom: 6 }}>
+          <img src={logo} alt="Logo" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover' }}/>
+        </div>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 22, marginBottom: 4 }}>HELADERIA</div>
+        <hr style={{ borderTop: '1px dashed #000', margin: '8px 0' }}/>
         <div>Fecha: {recibo.fecha}</div>
         <div>Ticket #{recibo.ventaId}</div>
-        <hr style={{ borderTop: '1px dashed #000', margin: '6px 0' }}/>
+        <hr style={{ borderTop: '1px dashed #000', margin: '8px 0' }}/>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {recibo.itemsVendidos.map((i, idx) => (
               <>
                 <tr key={idx}>
-                  <td style={{ padding: '2px 0' }}>{i.nombre}</td>
-                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '4px 0' }}>{i.nombre}</td>
+                  <td style={{ textAlign: 'right', whiteSpace: 'nowrap', paddingLeft: 8 }}>
                     Q{(parseFloat(i.precio) * i.cantidad).toFixed(2)}
                   </td>
                 </tr>
                 <tr key={idx + 'sub'}>
-                  <td colSpan={2} style={{ fontSize: 10, paddingBottom: 4, paddingLeft: 8, color: '#444' }}>
+                  <td colSpan={2} style={{ fontSize: 12, paddingBottom: 6, paddingLeft: 10, color: '#444' }}>
                     x{i.cantidad} a Q{parseFloat(i.precio).toFixed(2)} c/u
                   </td>
                 </tr>
@@ -412,33 +416,34 @@ export default function Ventas() {
             ))}
           </tbody>
         </table>
-        <hr style={{ borderTop: '1px dashed #000', margin: '6px 0' }}/>
+        <hr style={{ borderTop: '1px dashed #000', margin: '8px 0' }}/>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             <tr>
-              <td style={{ fontWeight: 'bold', fontSize: 14 }}>TOTAL</td>
-              <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 14 }}>Q{recibo.totalVenta}</td>
+              <td style={{ fontWeight: 'bold', fontSize: 18, paddingBottom: 4 }}>TOTAL</td>
+              <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 18, paddingBottom: 4 }}>Q{recibo.totalVenta}</td>
             </tr>
             {recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 && <>
               <tr>
-                <td style={{ paddingTop: 2 }}>Entrega</td>
-                <td style={{ textAlign: 'right', paddingTop: 2 }}>Q{recibo.pagoCliente.toFixed(2)}</td>
+                <td style={{ paddingTop: 3 }}>Entrega</td>
+                <td style={{ textAlign: 'right', paddingTop: 3 }}>Q{recibo.pagoCliente.toFixed(2)}</td>
               </tr>
               <tr>
-                <td style={{ fontWeight: 'bold' }}>Vuelto</td>
-                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                <td style={{ fontWeight: 'bold', paddingTop: 2 }}>Vuelto</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold', paddingTop: 2 }}>
                   Q{(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}
                 </td>
               </tr>
             </>}
             <tr>
-              <td style={{ paddingTop: 4 }}>Pago</td>
-              <td style={{ textAlign: 'right', paddingTop: 4 }}>{METODO_LABEL[recibo.metodoUsado]}</td>
+              <td style={{ paddingTop: 6 }}>Pago</td>
+              <td style={{ textAlign: 'right', paddingTop: 6 }}>{METODO_LABEL[recibo.metodoUsado]}</td>
             </tr>
           </tbody>
         </table>
-        <hr style={{ borderTop: '1px dashed #000', margin: '6px 0' }}/>
-        <div style={{ textAlign: 'center', fontWeight: 'bold' }}>Gracias por su compra!</div>
+        <hr style={{ borderTop: '1px dashed #000', margin: '8px 0' }}/>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 15, marginTop: 4 }}>Gracias por su compra!</div>
+        <div style={{ marginBottom: 8 }}/>
       </div>,
       document.body
     )}
