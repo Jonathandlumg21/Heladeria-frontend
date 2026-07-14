@@ -69,7 +69,7 @@ export default function Dashboard() {
 
       <div className="page-content">
         {/* Tarjetas de resumen */}
-        {resumen && (
+        {tieneRol('admin') && resumen && (
           <div className="metrics-grid" style={{ marginBottom: 24 }}>
             <div className="metric-card">
               <div className="metric-label">Ventas hoy</div>
@@ -98,7 +98,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        {tieneRol('admin') && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
           {/* Gráfica de ventas */}
           <div className="card card-body">
@@ -155,10 +155,10 @@ export default function Dashboard() {
               </ResponsiveContainer>
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Stock bajo — excluye Especialidades (stock derivado) */}
-        {stockBajo.filter(p => p.categoria !== 'Especialidades').length > 0 && (
+        {tieneRol('admin') && stockBajo.filter(p => p.categoria !== 'Especialidades').length > 0 && (
           <div className="card">
             <div className="card-body">
               <h3 style={{ fontWeight: 700, marginBottom: 16, color: 'var(--rojo)' }}>
@@ -194,7 +194,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {stockBajo.filter(p => p.categoria !== 'Especialidades').length === 0 && resumen && (
+        {tieneRol('admin') && stockBajo.filter(p => p.categoria !== 'Especialidades').length === 0 && resumen && (
           <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
             <p style={{ fontSize: 16 }}>✅ Todos los productos tienen stock suficiente</p>
           </div>

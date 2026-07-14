@@ -6,7 +6,7 @@ import logo from '../assets/logo.png'
 const NAV = [
   { to: '/ventas',     icon: '🛒', label: 'Ventas',         roles: ['admin','vendedor'] },
   { to: '/inventario', icon: '📦', label: 'Inventario',     roles: ['admin','vendedor','bodeguero'] },
-  { to: '/dashboard',  icon: '📊', label: 'Dashboard',      roles: ['admin'] },
+  { to: '/dashboard',  icon: '📊', label: 'Dashboard',      roles: ['admin', 'vendedor'] },
   { to: '/productos',  icon: '🍦', label: 'Productos',      roles: ['admin'] },
   { to: '/reportes',   icon: '📋', label: 'Reportes',        roles: ['admin'] },
   { to: '/admin',      icon: '⚙️', label: 'Administración', roles: ['admin'] },
