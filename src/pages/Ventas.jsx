@@ -83,23 +83,21 @@ export default function Ventas() {
 
   useEffect(() => {
     if (!recibo) return
-
-    document.body.classList.add('printing')
-
     const limpiar = () => {
       setRecibo(null)
       document.body.classList.remove('printing')
     }
     window.addEventListener('afterprint', limpiar, { once: true })
-
-    const t = setTimeout(() => { window.print() }, 300)
-
     return () => {
-      clearTimeout(t)
       window.removeEventListener('afterprint', limpiar)
       document.body.classList.remove('printing')
     }
   }, [recibo])
+
+  const handleImprimir = () => {
+    document.body.classList.add('printing')
+    setTimeout(() => { window.print() }, 200)
+  }
 
   // ── Cobrar ──
   const cobrar = async () => {
@@ -245,7 +243,28 @@ export default function Ventas() {
           <div className="card-body">
             <h3 style={{ fontWeight: 700, marginBottom: 16 }}>Carrito</h3>
 
-            {carrito.length === 0 ? (
+            {recibo ? (
+              <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
+                <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Venta registrada</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>
+                  Total: Q{recibo.totalVenta}
+                </p>
+                <button
+                  className="btn btn-primary w-full"
+                  style={{ marginBottom: 10, fontSize: 15, padding: '12px' }}
+                  onClick={handleImprimir}
+                >
+                  🖨️ Imprimir ticket
+                </button>
+                <button
+                  className="btn btn-outline w-full"
+                  onClick={() => { setRecibo(null); document.body.classList.remove('printing') }}
+                >
+                  Nueva venta
+                </button>
+              </div>
+            ) : carrito.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>
                 Selecciona productos del catálogo
               </p>
@@ -290,14 +309,14 @@ export default function Ventas() {
               </div>
             )}
 
-            <div style={{
+            {!recibo && <div style={{
               fontSize: 20, fontWeight: 700, textAlign: 'right',
               padding: '12px 0', borderTop: '2px solid var(--border)', marginBottom: 14,
             }}>
               Total: Q{total.toFixed(2)}
-            </div>
+            </div>}
 
-            {metodo === 'efectivo' && (
+            {!recibo && metodo === 'efectivo' && (
               <div style={{ marginBottom: 14 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
                   PAGO DEL CLIENTE
@@ -337,47 +356,49 @@ export default function Ventas() {
               </div>
             )}
 
-            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-              MÉTODO DE PAGO
-            </p>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-              {METODOS.map(m => (
-                <button
-                  key={m.value}
-                  onClick={() => { setMetodo(m.value); if (m.value !== 'efectivo') setPagaCon('') }}
-                  style={{
-                    flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
-                    borderRadius: 8, textAlign: 'center',
-                    fontWeight: metodo === m.value ? 700 : 400,
-                    border:     metodo === m.value ? '2px solid var(--azul)' : '1px solid var(--border)',
-                    background: metodo === m.value ? 'var(--azul-claro)' : '#fff',
-                    color:      metodo === m.value ? 'var(--azul)' : 'var(--text-muted)',
-                  }}
-                >
-                  <div style={{ fontSize: 18 }}>{m.icon}</div>
-                  {m.label}
-                </button>
-              ))}
-            </div>
+            {!recibo && <>
+              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
+                MÉTODO DE PAGO
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {METODOS.map(m => (
+                  <button
+                    key={m.value}
+                    onClick={() => { setMetodo(m.value); if (m.value !== 'efectivo') setPagaCon('') }}
+                    style={{
+                      flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
+                      borderRadius: 8, textAlign: 'center',
+                      fontWeight: metodo === m.value ? 700 : 400,
+                      border:     metodo === m.value ? '2px solid var(--azul)' : '1px solid var(--border)',
+                      background: metodo === m.value ? 'var(--azul-claro)' : '#fff',
+                      color:      metodo === m.value ? 'var(--azul)' : 'var(--text-muted)',
+                    }}
+                  >
+                    <div style={{ fontSize: 18 }}>{m.icon}</div>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
 
-            <button
-              className="btn btn-success w-full"
-              style={{ padding: '13px', fontSize: 15 }}
-              onClick={cobrar}
-              disabled={cobrando || carrito.length === 0}
-            >
-              {cobrando ? 'Procesando...' : `Cobrar Q${total.toFixed(2)}`}
-            </button>
-
-            {carrito.length > 0 && (
               <button
-                className="btn btn-outline w-full"
-                style={{ marginTop: 8 }}
-                onClick={() => setCarrito([])}
+                className="btn btn-success w-full"
+                style={{ padding: '13px', fontSize: 15 }}
+                onClick={cobrar}
+                disabled={cobrando || carrito.length === 0}
               >
-                Limpiar carrito
+                {cobrando ? 'Procesando...' : `Cobrar Q${total.toFixed(2)}`}
               </button>
-            )}
+
+              {carrito.length > 0 && (
+                <button
+                  className="btn btn-outline w-full"
+                  style={{ marginTop: 8 }}
+                  onClick={() => setCarrito([])}
+                >
+                  Limpiar carrito
+                </button>
+              )}
+            </>}
           </div>
         </div>
       </div>
