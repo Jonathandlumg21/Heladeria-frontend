@@ -83,30 +83,21 @@ export default function Ventas() {
 
   useEffect(() => {
     if (!recibo) return
-    const style = document.createElement('style')
-    style.id = '__print_style__'
-    style.textContent = `
-      @media print {
-        @page { size: 80mm auto; margin: 2mm 4mm; }
-        #root { display: none !important; }
-        #recibo-print { display: block !important; }
-      }
-      #recibo-print { display: none; }
-    `
-    document.head.appendChild(style)
+
+    document.body.classList.add('printing')
 
     const limpiar = () => {
       setRecibo(null)
-      document.getElementById('__print_style__')?.remove()
+      document.body.classList.remove('printing')
     }
-    // afterprint dispara cuando el diálogo cierra (tras imprimir o cancelar)
     window.addEventListener('afterprint', limpiar, { once: true })
 
-    const t = setTimeout(() => { window.print() }, 600)
+    const t = setTimeout(() => { window.print() }, 300)
 
     return () => {
       clearTimeout(t)
       window.removeEventListener('afterprint', limpiar)
+      document.body.classList.remove('printing')
     }
   }, [recibo])
 

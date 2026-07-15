@@ -272,3 +272,12 @@ tr:hover td { background: #fafbfc; }
   .btn    { padding: 9px 14px; }
   .btn-sm { padding: 7px 10px; }
 }
+
+/* ===== IMPRESIÓN DE TICKET ===== */
+#recibo-print { display: none; }
+
+@media print {
+  @page { size: 80mm auto; margin: 2mm 4mm; }
+  body.printing > *           { display: none !important; }
+  body.printing > #recibo-print { display: block !important; }
+}
