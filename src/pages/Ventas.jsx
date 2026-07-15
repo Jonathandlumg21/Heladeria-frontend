@@ -69,7 +69,6 @@ export default function Ventas() {
   const pagaConNum = parseFloat(pagaCon) || 0
   const vuelto     = metodo === 'efectivo' && pagaConNum > 0 ? pagaConNum - total : null
 
-  // ── Impresión: guarda datos y useEffect dispara window.print() ──
   const imprimirTicket = (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
     setRecibo({ ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente,
       fecha: new Date().toLocaleString('es', {
@@ -161,17 +160,9 @@ export default function Ventas() {
     add(0x0A, 0x0A, 0x0A)
     add(0x1D, 0x56, 0x41, 0x00) // corte completo
 
-    // ── Enviar a RawBT HTTP API ──────────────────────────────────────
-    // mode:'no-cors' evita el bloqueo CORS; Chrome permite localhost desde HTTPS
-    fetch('http://localhost:8080/rawbt', {
-      method: 'POST',
-      mode: 'no-cors',
-      body: new Blob([new Uint8Array(b)]),
-    }).then(() => {
-      toast.success('Ticket enviado a la impresora')
-    }).catch(() => {
-      toast.error('No se conectó con RawBT — activa "HTTP server" en Ajustes de la app')
-    })
+    // Codificar bytes como base64 y abrir RawBT via URI scheme
+    const base64 = btoa(Array.from(b, x => String.fromCharCode(x)).join(''))
+    window.location.href = `rawbt://base64/${base64}`
   }
 
   // ── Cobrar ──
@@ -334,7 +325,7 @@ export default function Ventas() {
                 </button>
                 <button
                   className="btn btn-outline w-full"
-                  onClick={() => { setRecibo(null); document.body.classList.remove('printing') }}
+                  onClick={() => setRecibo(null)}
                 >
                   Nueva venta
                 </button>
