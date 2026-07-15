@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [cargandoMetodos, setCargando]  = useState(false)
 
   useEffect(() => {
-    if (tieneRol('admin')) {
+    if (tieneRol('admin', 'propietario')) {
       api.get('/dashboard/resumen').then(r => setResumen(r.data))
       api.get('/dashboard/ventas-diarias').then(r => setDiarias(
         r.data.map(d => ({
@@ -71,7 +71,7 @@ export default function Dashboard() {
 
       <div className="page-content">
         {/* Tarjetas de resumen */}
-        {tieneRol('admin') && resumen && (
+        {tieneRol('admin', 'propietario') && resumen && (
           <div className="metrics-grid" style={{ marginBottom: 24 }}>
             <div className="metric-card">
               <div className="metric-label">Ventas hoy</div>
@@ -100,7 +100,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {tieneRol('admin') && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+        {tieneRol('admin', 'propietario') && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
 
           {/* Gráfica de ventas */}
           <div className="card card-body">
@@ -160,7 +160,7 @@ export default function Dashboard() {
         </div>}
 
         {/* Stock bajo — excluye Especialidades (stock derivado) */}
-        {tieneRol('admin') && stockBajo.filter(p => p.categoria !== 'Especialidades').length > 0 && (
+        {tieneRol('admin', 'propietario') && stockBajo.filter(p => p.categoria !== 'Especialidades').length > 0 && (
           <div className="card">
             <div className="card-body">
               <h3 style={{ fontWeight: 700, marginBottom: 16, color: 'var(--rojo)' }}>
@@ -196,7 +196,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {tieneRol('admin') && stockBajo.filter(p => p.categoria !== 'Especialidades').length === 0 && resumen && (
+        {tieneRol('admin', 'propietario') && stockBajo.filter(p => p.categoria !== 'Especialidades').length === 0 && resumen && (
           <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
             <p style={{ fontSize: 16 }}>✅ Todos los productos tienen stock suficiente</p>
           </div>

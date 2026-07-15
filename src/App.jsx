@@ -13,8 +13,9 @@ import Reportes   from './pages/Reportes'
 function AppRoutes() {
   const { usuario } = useAuth()
 
-  const inicio = usuario?.rol === 'vendedor'  ? '/ventas'
-               : usuario?.rol === 'bodeguero' ? '/inventario'
+  const inicio = usuario?.rol === 'vendedor'    ? '/ventas'
+               : usuario?.rol === 'bodeguero'  ? '/inventario'
+               : usuario?.rol === 'propietario' ? '/dashboard'
                : '/dashboard'
 
   return (
@@ -38,7 +39,7 @@ function AppRoutes() {
       } />
 
       <Route path="/dashboard" element={
-        <RutaProtegida roles={['admin', 'vendedor']}>
+        <RutaProtegida roles={['admin', 'vendedor', 'propietario']}>
           <Layout><Dashboard /></Layout>
         </RutaProtegida>
       } />

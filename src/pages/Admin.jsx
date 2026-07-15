@@ -3,8 +3,8 @@ import api from '../api/axios'
 import toast from 'react-hot-toast'
 
 const VACÍO = { nombre: '', email: '', password: '', rol: 'vendedor', activo: true }
-const ROL_LABEL = { admin: 'Administrador', vendedor: 'Vendedor', bodeguero: 'Bodeguero' }
-const ROL_BADGE = { admin: 'badge-admin', vendedor: 'badge-vendedor', bodeguero: 'badge-bodeguero' }
+const ROL_LABEL = { admin: 'Administrador', vendedor: 'Vendedor', bodeguero: 'Bodeguero', propietario: 'Propietario' }
+const ROL_BADGE = { admin: 'badge-admin', vendedor: 'badge-vendedor', bodeguero: 'badge-bodeguero', propietario: 'badge-propietario' }
 
 export default function Admin() {
   const [usuarios, setUsuarios]         = useState([])
@@ -108,7 +108,7 @@ export default function Admin() {
       <div className="page-content">
         {/* Resumen de roles */}
         <div className="metrics-grid" style={{ marginBottom: 24 }}>
-          {['admin','vendedor','bodeguero'].map(rol => (
+          {['admin','vendedor','bodeguero','propietario'].map(rol => (
             <div key={rol} className="metric-card">
               <div className="metric-label">{ROL_LABEL[rol]}s</div>
               <div className="metric-value">{usuarios.filter(u => u.rol === rol).length}</div>
@@ -241,6 +241,7 @@ export default function Admin() {
                     onChange={e => setForm(f => ({ ...f, rol: e.target.value }))}>
                     <option value="vendedor">Vendedor</option>
                     <option value="bodeguero">Bodeguero</option>
+                    <option value="propietario">Propietario</option>
                     <option value="admin">Administrador</option>
                   </select>
                 </div>
@@ -264,9 +265,10 @@ export default function Admin() {
               </div>
 
               <div style={{ background: 'var(--bg)', borderRadius: 8, padding: 12, fontSize: 13 }}>
-                {form.rol === 'admin'     && <p>✅ Acceso completo a todos los módulos</p>}
-                {form.rol === 'vendedor'  && <p>🛒 Acceso a ventas e inventario (solo lectura de stock)</p>}
-                {form.rol === 'bodeguero' && <p>📦 Acceso a inventario: ver stock e ingresar entradas</p>}
+                {form.rol === 'admin'       && <p>✅ Acceso completo a todos los módulos</p>}
+                {form.rol === 'vendedor'    && <p>🛒 Acceso a ventas e inventario (solo lectura de stock)</p>}
+                {form.rol === 'bodeguero'   && <p>📦 Acceso a inventario: ver stock e ingresar entradas</p>}
+                {form.rol === 'propietario' && <p>📊 Acceso de solo lectura al Dashboard completo</p>}
               </div>
             </div>
             <div className="modal-footer">

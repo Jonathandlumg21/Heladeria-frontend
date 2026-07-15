@@ -6,7 +6,7 @@ import logo from '../assets/logo.png'
 const NAV = [
   { to: '/ventas',     icon: '🛒', label: 'Ventas',         roles: ['admin','vendedor'] },
   { to: '/inventario', icon: '📦', label: 'Inventario',     roles: ['admin','vendedor','bodeguero'] },
-  { to: '/dashboard',  icon: '📊', label: 'Dashboard',      roles: ['admin', 'vendedor'] },
+  { to: '/dashboard',  icon: '📊', label: 'Dashboard',      roles: ['admin', 'vendedor', 'propietario'] },
   { to: '/productos',  icon: '🍦', label: 'Productos',      roles: ['admin'] },
   { to: '/reportes',   icon: '📋', label: 'Reportes',        roles: ['admin'] },
   { to: '/admin',      icon: '⚙️', label: 'Administración', roles: ['admin'] },
@@ -25,9 +25,10 @@ export default function Layout({ children }) {
   const cerrar = () => setSidebarOpen(false)
 
   const ROLE_LABEL = {
-    admin:     'Administrador',
-    vendedor:  'Vendedor',
-    bodeguero: 'Bodeguero',
+    admin:       'Administrador',
+    vendedor:    'Vendedor',
+    bodeguero:   'Bodeguero',
+    propietario: 'Propietario',
   }
 
   return (

@@ -136,7 +136,8 @@ tr:hover td { background: #fafbfc; }
 .badge-sinstock { background: #fee2e2; color: var(--rojo); }
 .badge-admin    { background: var(--azul-claro); color: var(--azul); }
 .badge-vendedor { background: #e8f4de; color: var(--verde); }
-.badge-bodeguero{ background: #fef3c7; color: var(--amarillo); }
+.badge-bodeguero  { background: #fef3c7; color: var(--amarillo); }
+.badge-propietario{ background: #ede9fe; color: #6d28d9; }
 .badge-activo   { background: #e8f4de; color: var(--verde); }
 .badge-inactivo { background: #fee2e2; color: var(--rojo); }
 
