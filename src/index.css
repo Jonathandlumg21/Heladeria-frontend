@@ -273,3 +273,11 @@ tr:hover td { background: #fafbfc; }
   .btn-sm { padding: 7px 10px; }
 }
 
+/* ===== IMPRESIÓN DE TICKET ===== */
+@media print {
+  @page { size: 80mm auto; margin: 0; }
+  body { visibility: hidden; }
+  #ticket-print { visibility: visible; position: fixed; top: 0; left: 0; width: 72mm; background: #fff; padding: 4mm; }
+  #ticket-print * { visibility: visible; }
+}
+
