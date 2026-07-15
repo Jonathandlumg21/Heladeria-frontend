@@ -161,21 +161,16 @@ export default function Ventas() {
     add(0x0A, 0x0A, 0x0A)
     add(0x1D, 0x56, 0x41, 0x00) // corte completo
 
-    // ── Enviar a RawBT ───────────────────────────────────────────────
-    const base64 = btoa(b.map(x => String.fromCharCode(x)).join(''))
-
-    // 1) Intenta HTTP API de RawBT (localhost — Chrome lo permite desde HTTPS)
+    // ── Enviar a RawBT HTTP API ──────────────────────────────────────
+    // mode:'no-cors' evita el bloqueo CORS; Chrome permite localhost desde HTTPS
     fetch('http://localhost:8080/rawbt', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: new Uint8Array(b),
+      mode: 'no-cors',
+      body: new Blob([new Uint8Array(b)]),
+    }).then(() => {
+      toast.success('Ticket enviado a la impresora')
     }).catch(() => {
-      // 2) Fallback: rawbt:// intent — Android abre RawBT con los datos
-      const a = document.createElement('a')
-      a.href = `rawbt://base64/${base64}`
-      document.body.appendChild(a)
-      a.click()
-      setTimeout(() => a.remove(), 300)
+      toast.error('No se conectó con RawBT — activa "HTTP server" en Ajustes de la app')
     })
   }
 
