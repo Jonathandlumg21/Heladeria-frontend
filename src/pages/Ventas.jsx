@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 import logo from '../assets/logo.png'
@@ -23,7 +24,6 @@ export default function Ventas() {
   const [cobrando, setCobrando]     = useState(false)
   const [pagaCon, setPagaCon]       = useState('')
   const [recibo, setRecibo]         = useState(null)
-  const [imprimiendo, setImprimiendo] = useState(false)
 
   const cargarProductos = () => {
     setLoading(true)
@@ -83,11 +83,22 @@ export default function Ventas() {
 
   const handleImprimir = () => {
     if (!recibo) return
-    setImprimiendo(true)
-    setTimeout(() => {
-      window.print()
-      window.addEventListener('afterprint', () => setImprimiendo(false), { once: true })
-    }, 300)
+    const style = document.createElement('style')
+    style.id = '__print_style__'
+    style.textContent = `
+      @media print {
+        @page { size: 80mm auto; margin: 2mm 4mm; }
+        #root { display: none !important; }
+        #recibo-print { display: block !important; }
+      }
+      #recibo-print { display: none; }
+    `
+    document.head.appendChild(style)
+    const limpiar = () => {
+      document.getElementById('__print_style__')?.remove()
+    }
+    window.addEventListener('afterprint', limpiar, { once: true })
+    setTimeout(() => { window.print() }, 600)
   }
 
   // ── Cobrar ──
@@ -394,69 +405,64 @@ export default function Ventas() {
         </div>
       </div>
 
-      {/* Overlay de impresión — cubre toda la pantalla para que RawBT capture solo el ticket */}
-      {imprimiendo && recibo && (
-        <div id="ticket-print" style={{
-          position: 'fixed', inset: 0, background: '#fff',
-          zIndex: 99999, overflowY: 'auto', padding: '4mm',
-          fontFamily: 'monospace', fontSize: 15,
-        }}>
-          <div style={{ width: '72mm', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 6 }}>
-              <img src={logo} alt="Logo" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', display: 'block', margin: '0 auto 6px' }}/>
-              <div style={{ fontWeight: 'bold', fontSize: 22, marginBottom: 4 }}>HELADERIA</div>
-            </div>
-            <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
-            <div>Fecha: {recibo.fecha}</div>
-            <div>Ticket #{recibo.ventaId}</div>
-            <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                {recibo.itemsVendidos.map((i, idx) => (
-                  <tr key={idx}>
-                    <td colSpan={2}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
-                        <span>{i.nombre}</span>
-                        <span style={{ whiteSpace: 'nowrap', paddingLeft: 8 }}>Q{(parseFloat(i.precio) * i.cantidad).toFixed(2)}</span>
-                      </div>
-                      <div style={{ fontSize: 12, paddingBottom: 5, paddingLeft: 10, color: '#444' }}>
-                        x{i.cantidad} a Q{parseFloat(i.precio).toFixed(2)} c/u
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <tbody>
-                <tr>
-                  <td style={{ fontWeight: 'bold', fontSize: 18, paddingBottom: 4 }}>TOTAL</td>
-                  <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 18, paddingBottom: 4 }}>Q{recibo.totalVenta}</td>
-                </tr>
-                {recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 && <>
-                  <tr>
-                    <td style={{ paddingTop: 3 }}>Entrega</td>
-                    <td style={{ textAlign: 'right', paddingTop: 3 }}>Q{recibo.pagoCliente.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 'bold', paddingTop: 2 }}>Vuelto</td>
-                    <td style={{ textAlign: 'right', fontWeight: 'bold', paddingTop: 2 }}>
-                      Q{(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}
-                    </td>
-                  </tr>
-                </>}
-                <tr>
-                  <td style={{ paddingTop: 6 }}>Pago</td>
-                  <td style={{ textAlign: 'right', paddingTop: 6 }}>{METODO_LABEL[recibo.metodoUsado]}</td>
-                </tr>
-              </tbody>
-            </table>
-            <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
-            <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 15, marginTop: 4 }}>¡Gracias por su compra!</div>
-            <div style={{ marginBottom: 8 }}/>
+      {/* Portal de impresión — invisible en pantalla, visible solo al imprimir */}
+      {recibo && createPortal(
+        <div id="recibo-print" style={{ fontFamily: 'monospace', fontSize: 18, width: '72mm', margin: 0 }}>
+          <div style={{ textAlign: 'center', marginBottom: 6 }}>
+            <img src={logo} alt="Logo" style={{ width: 72, height: 72, borderRadius: '50%', objectFit: 'cover', display: 'block', margin: '0 auto 8px' }}/>
+            <div style={{ fontWeight: 'bold', fontSize: 26, marginBottom: 4 }}>HELADERIA</div>
           </div>
-        </div>
+          <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
+          <div style={{ fontSize: 16 }}>Fecha: {recibo.fecha}</div>
+          <div style={{ fontSize: 16 }}>Ticket #{recibo.ventaId}</div>
+          <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              {recibo.itemsVendidos.map((i, idx) => (
+                <tr key={idx}>
+                  <td colSpan={2}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0' }}>
+                      <span style={{ fontWeight: 600 }}>{i.nombre}</span>
+                      <span style={{ whiteSpace: 'nowrap', paddingLeft: 8 }}>Q{(parseFloat(i.precio) * i.cantidad).toFixed(2)}</span>
+                    </div>
+                    <div style={{ fontSize: 14, paddingBottom: 6, paddingLeft: 10, color: '#444' }}>
+                      x{i.cantidad} a Q{parseFloat(i.precio).toFixed(2)} c/u
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr>
+                <td style={{ fontWeight: 'bold', fontSize: 22, paddingBottom: 4 }}>TOTAL</td>
+                <td style={{ textAlign: 'right', fontWeight: 'bold', fontSize: 22, paddingBottom: 4 }}>Q{recibo.totalVenta}</td>
+              </tr>
+              {recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 && <>
+                <tr>
+                  <td style={{ paddingTop: 4, fontSize: 16 }}>Entrega</td>
+                  <td style={{ textAlign: 'right', paddingTop: 4, fontSize: 16 }}>Q{recibo.pagoCliente.toFixed(2)}</td>
+                </tr>
+                <tr>
+                  <td style={{ fontWeight: 'bold', paddingTop: 3, fontSize: 18 }}>Vuelto</td>
+                  <td style={{ textAlign: 'right', fontWeight: 'bold', paddingTop: 3, fontSize: 18 }}>
+                    Q{(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}
+                  </td>
+                </tr>
+              </>}
+              <tr>
+                <td style={{ paddingTop: 6, fontSize: 16 }}>Pago</td>
+                <td style={{ textAlign: 'right', paddingTop: 6, fontSize: 16 }}>{METODO_LABEL[recibo.metodoUsado]}</td>
+              </tr>
+            </tbody>
+          </table>
+          <hr style={{ border: 'none', borderTop: '1px dashed #000', margin: '8px 0' }}/>
+          <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginTop: 4 }}>¡Gracias por su compra!</div>
+          <div style={{ marginBottom: 10 }}/>
+        </div>,
+        document.body
       )}
     </>
   )
