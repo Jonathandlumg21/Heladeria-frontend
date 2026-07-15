@@ -160,9 +160,16 @@ export default function Ventas() {
     add(0x0A, 0x0A, 0x0A)
     add(0x1D, 0x56, 0x41, 0x00) // corte completo
 
-    // Codificar bytes como base64 y abrir RawBT via URI scheme
-    const base64 = btoa(Array.from(b, x => String.fromCharCode(x)).join(''))
-    window.location.href = `rawbt://base64/${base64}`
+    fetch('http://localhost:8080/rawbt', {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: new Blob([new Uint8Array(b)]),
+    }).then(() => {
+      toast.success('Ticket enviado a la impresora')
+    }).catch(() => {
+      toast.error('No conectó con RawBT — ve a Ajustes en la app y activa "Servidor HTTP"')
+    })
   }
 
   // ── Cobrar ──
