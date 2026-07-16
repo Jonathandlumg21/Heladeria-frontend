@@ -79,104 +79,106 @@ export default function Ventas() {
   }
 
   const handleImprimir = () => {
-    if (!recibo) return
+  if (!recibo) return
 
-    // ── Construcción ESC/POS ──────────────────────────────────────────
-    const b = []
-    const add = (...bytes) => bytes.forEach(x => b.push(x))
+  const b = []
+  const add = (...bytes) => bytes.forEach(x => b.push(x))
 
-    // Quita tildes y caracteres no ASCII para compatibilidad térmica
-    const safe = s => s
-      .replace(/[áàâä]/gi, 'a').replace(/[éèêë]/gi, 'e')
-      .replace(/[íìîï]/gi, 'i').replace(/[óòôö]/gi, 'o')
-      .replace(/[úùûü]/gi, 'u').replace(/[ñ]/gi, 'n')
-      .replace(/[Ñ]/g, 'N').replace(/[¡¿]/g, '')
+  const safe = s => s
+    .replace(/[áàâä]/gi, 'a').replace(/[éèêë]/gi, 'e')
+    .replace(/[íìîï]/gi, 'i').replace(/[óòôö]/gi, 'o')
+    .replace(/[úùûü]/gi, 'u').replace(/[ñ]/gi, 'n')
+    .replace(/[Ñ]/g, 'N').replace(/[¡¿]/g, '')
 
-    const ln = (str = '') => {
-      const s = safe(String(str))
-      for (let i = 0; i < s.length; i++) b.push(s.charCodeAt(i) & 0xFF)
-      add(0x0A)
-    }
-    const sep = () => ln('------------------------------------------'.slice(0, 42))
-
-    // Inicializar impresora
-    add(0x1B, 0x40)
-
-    // Nombre tienda — centrado, negrita, doble tamaño
-    add(0x1B, 0x61, 0x01)        // centrar
-    add(0x1B, 0x45, 0x01)        // negrita ON
-    add(0x1D, 0x21, 0x11)        // doble ancho + alto
-    ln('HELADERIA')
-    add(0x1D, 0x21, 0x00)        // tamaño normal
-    add(0x1B, 0x45, 0x00)        // negrita OFF
-    add(0x1B, 0x61, 0x00)        // izquierda
-
+  const ln = (str = '') => {
+    const s = safe(String(str))
+    for (let i = 0; i < s.length; i++) b.push(s.charCodeAt(i) & 0xFF)
     add(0x0A)
-    sep()
-    ln(`Fecha:  ${recibo.fecha}`)
-    ln(`Ticket: #${recibo.ventaId}`)
-    sep()
-
-    // Items
-    recibo.itemsVendidos.forEach(i => {
-      const nombre = safe(i.nombre).slice(0, 22)
-      const importe = `Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}`
-      const pad = Math.max(1, 32 - nombre.length - importe.length)
-      add(0x1B, 0x45, 0x01)
-      ln(`${nombre}${' '.repeat(pad)}${importe}`)
-      add(0x1B, 0x45, 0x00)
-      ln(`  x${i.cantidad} @ Q${parseFloat(i.precio).toFixed(2)} c/u`)
-    })
-
-    sep()
-
-    // Total — centrado, negrita, doble
-    add(0x1B, 0x61, 0x01)
-    add(0x1B, 0x45, 0x01)
-    add(0x1D, 0x21, 0x11)
-    ln(`TOTAL  Q${recibo.totalVenta}`)
-    add(0x1D, 0x21, 0x00)
-    add(0x1B, 0x45, 0x00)
-    add(0x1B, 0x61, 0x00)
-
-    // Vuelto (solo efectivo)
-    if (recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0) {
-      ln(`Entrega: Q${recibo.pagoCliente.toFixed(2)}`)
-      add(0x1B, 0x45, 0x01)
-      ln(`Vuelto:  Q${(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}`)
-      add(0x1B, 0x45, 0x00)
-    }
-
-    ln(`Pago: ${METODO_LABEL[recibo.metodoUsado]}`)
-    sep()
-
-    // Gracias — centrado, negrita
-    add(0x1B, 0x61, 0x01)
-    add(0x1B, 0x45, 0x01)
-    ln('Gracias por su compra!')
-    add(0x1B, 0x45, 0x00)
-
-    // Avanzar papel y cortar
-    add(0x0A, 0x0A, 0x0A)
-    add(0x1D, 0x56, 0x41, 0x00) // corte completo
-
-    try {
-  // Convertir bytes ESC/POS a base64
-  const uint8  = new Uint8Array(b)
-  let binary   = ''
-  uint8.forEach(byte => binary += String.fromCharCode(byte))
-  const base64 = btoa(binary)
-
-  // Intentar via rawbt: intent (versión gratuita)
-  const intentUri = `rawbt://base64,${base64}`
-  window.location.href = intentUri
-  toast.success('Enviando ticket a RawBT...')
-
-} catch (e) {
-  console.error('Error al imprimir:', e)
-  toast.error('Error al generar el ticket')
-}
   }
+  const sep = () => ln('------------------------------------------'.slice(0, 42))
+
+  // Inicializar impresora
+  add(0x1B, 0x40)
+
+  // Nombre tienda — centrado, negrita, doble tamaño
+  add(0x1B, 0x61, 0x01)
+  add(0x1B, 0x45, 0x01)
+  add(0x1D, 0x21, 0x11)
+  ln('HELADERIA SARITA')
+  add(0x1D, 0x21, 0x00)
+  add(0x1B, 0x45, 0x00)
+  add(0x1B, 0x61, 0x00)
+
+  add(0x0A)
+  sep()
+  ln(`Fecha:  ${recibo.fecha}`)
+  ln(`Ticket: #${recibo.ventaId}`)
+  sep()
+
+  // Items
+  recibo.itemsVendidos.forEach(i => {
+    const nombre  = safe(i.nombre).slice(0, 22)
+    const importe = `Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}`
+    const pad     = Math.max(1, 32 - nombre.length - importe.length)
+    add(0x1B, 0x45, 0x01)
+    ln(`${nombre}${' '.repeat(pad)}${importe}`)
+    add(0x1B, 0x45, 0x00)
+    ln(`  x${i.cantidad} @ Q${parseFloat(i.precio).toFixed(2)} c/u`)
+  })
+
+  sep()
+
+  // Total
+  add(0x1B, 0x61, 0x01)
+  add(0x1B, 0x45, 0x01)
+  add(0x1D, 0x21, 0x11)
+  ln(`TOTAL  Q${recibo.totalVenta}`)
+  add(0x1D, 0x21, 0x00)
+  add(0x1B, 0x45, 0x00)
+  add(0x1B, 0x61, 0x00)
+
+  // Vuelto
+  if (recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0) {
+    ln(`Entrega: Q${recibo.pagoCliente.toFixed(2)}`)
+    add(0x1B, 0x45, 0x01)
+    ln(`Vuelto:  Q${(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}`)
+    add(0x1B, 0x45, 0x00)
+  }
+
+  ln(`Pago: ${METODO_LABEL[recibo.metodoUsado]}`)
+  sep()
+
+  // Gracias
+  add(0x1B, 0x61, 0x01)
+  add(0x1B, 0x45, 0x01)
+  ln('Gracias por su compra!')
+  add(0x1B, 0x45, 0x00)
+
+  // Avanzar y cortar
+  add(0x0A, 0x0A, 0x0A)
+  add(0x1D, 0x56, 0x41, 0x00)
+
+  // ── Enviar a RawBT via intent ──
+  try {
+    const uint8 = new Uint8Array(b)
+    let binary  = ''
+    uint8.forEach(byte => binary += String.fromCharCode(byte))
+    const base64 = btoa(binary)
+
+    const blob = new Blob([uint8], { type: 'application/octet-stream' })
+    const url  = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href  = `intent:${url}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.rawbt_intent_action=print;end`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('Enviando a RawBT...')
+
+  } catch (e) {
+    console.error('Error al imprimir:', e)
+    toast.error('Error al generar el ticket')
+  }
+}
 
   // ── Cobrar ──
   const cobrar = async () => {
