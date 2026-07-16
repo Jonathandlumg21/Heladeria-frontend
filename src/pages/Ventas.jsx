@@ -160,24 +160,23 @@ export default function Ventas() {
 
   // ── Enviar a RawBT via intent ──
   try {
-    const uint8 = new Uint8Array(b)
-    let binary  = ''
-    uint8.forEach(byte => binary += String.fromCharCode(byte))
-    const base64 = btoa(binary)
+  const uint8  = new Uint8Array(b)
+  let binary   = ''
+  uint8.forEach(byte => binary += String.fromCharCode(byte))
+  const base64 = btoa(binary)
 
-    const blob = new Blob([uint8], { type: 'application/octet-stream' })
-    const url  = URL.createObjectURL(blob)
+  // Mandar base64 directo via rawbt: scheme
+  const a    = document.createElement('a')
+  a.href     = `rawbt://base64,${base64}`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  toast.success('Enviando a RawBT...')
 
-    const a = document.createElement('a')
-    a.href  = `intent:${url}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;S.rawbt_intent_action=print;end`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Enviando a RawBT...')
-
-  } catch (e) {
-    console.error('Error al imprimir:', e)
-    toast.error('Error al generar el ticket')
-  }
+} catch (e) {
+  console.error('Error al imprimir:', e)
+  toast.error('Error al generar el ticket')
+}
 }
 
   // ── Cobrar ──
