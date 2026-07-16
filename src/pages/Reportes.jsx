@@ -44,7 +44,7 @@ export default function Reportes() {
   const cargarStock = async () => {
     setCargandoStock(true)
     try {
-      const { data } = await api.get('/dashboard/stock-bajo')
+      const { data } = await api.get('/reportes/stock')
       setStockData(data)
       setStockCargado(true)
     } catch {
@@ -57,8 +57,8 @@ export default function Reportes() {
   useEffect(() => { buscar(); cargarStock() }, [])
 
   const descargarStockPDF = () => {
-    const sinStock  = stockData.filter(p => p.stock === 0)
-    const bajoStock = stockData.filter(p => p.stock > 0)
+    const sinStock  = stockData.filter(p => p.estado === 'sin_stock')
+    const bajoStock = stockData.filter(p => p.estado === 'bajo_stock')
     const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })
 
     const fila = (p, tipo) => `
@@ -97,7 +97,7 @@ ${bajoStock.length > 0 ? `
 <table><thead><tr><th>Producto</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Mínimo</th><th>Faltante</th></tr></thead>
 <tbody>${bajoStock.map(p => fila(p, 'bajo')).join('')}</tbody></table>` : ''}
 
-${stockData.length === 0 ? '<p class="ok">✅ Todos los productos tienen stock suficiente.</p>' : ''}
+${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los productos tienen stock suficiente.</p>' : ''}
 
 <script>window.onload=()=>{window.print()}</script>
 </body></html>`
@@ -331,22 +331,24 @@ ${stockData.length === 0 ? '<p class="ok">✅ Todos los productos tienen stock s
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
                 <div className="metric-card">
                   <div className="metric-label">Total con alerta</div>
-                  <div className={`metric-value ${stockData.length > 0 ? 'rojo' : 'verde'}`}>{stockData.length}</div>
+                  <div className={`metric-value ${stockData.filter(p => p.estado !== 'ok').length > 0 ? 'rojo' : 'verde'}`}>
+                    {stockData.filter(p => p.estado !== 'ok').length}
+                  </div>
                   <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>productos</div>
                 </div>
                 <div className="metric-card" style={{ borderLeft: '4px solid var(--rojo)' }}>
                   <div className="metric-label">Sin stock</div>
-                  <div className="metric-value rojo">{stockData.filter(p => p.stock === 0).length}</div>
+                  <div className="metric-value rojo">{stockData.filter(p => p.estado === 'sin_stock').length}</div>
                   <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>agotados</div>
                 </div>
                 <div className="metric-card" style={{ borderLeft: '4px solid var(--amarillo)' }}>
                   <div className="metric-label">Stock bajo</div>
-                  <div className="metric-value amarillo">{stockData.filter(p => p.stock > 0).length}</div>
+                  <div className="metric-value amarillo">{stockData.filter(p => p.estado === 'bajo_stock').length}</div>
                   <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>por debajo del mínimo</div>
                 </div>
               </div>
 
-              {stockData.length === 0 ? (
+              {stockData.filter(p => p.estado !== 'ok').length === 0 ? (
                 <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
                   <p style={{ fontSize: 15, fontWeight: 600 }}>✅ Todos los productos tienen stock suficiente</p>
                 </div>
@@ -366,18 +368,18 @@ ${stockData.length === 0 ? '<p class="ok">✅ Todos los productos tienen stock s
                         </tr>
                       </thead>
                       <tbody>
-                        {stockData.map(p => (
+                        {stockData.filter(p => p.estado !== 'ok').map(p => (
                           <tr key={p.id}>
                             <td style={{ fontWeight: 600 }}>{p.nombre}</td>
                             <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{p.categoria || '—'}</td>
                             <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{p.unidad || '—'}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: p.stock === 0 ? 'var(--rojo)' : 'var(--amarillo)' }}>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: p.estado === 'sin_stock' ? 'var(--rojo)' : 'var(--amarillo)' }}>
                               {p.stock}
                             </td>
                             <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{p.stock_minimo ?? '—'}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--rojo)' }}>{p.faltante || '—'}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--rojo)' }}>{p.faltante > 0 ? p.faltante : '—'}</td>
                             <td>
-                              {p.stock === 0
+                              {p.estado === 'sin_stock'
                                 ? <span className="badge badge-sinstock">Sin stock</span>
                                 : <span className="badge badge-bajo">Stock bajo</span>
                               }
