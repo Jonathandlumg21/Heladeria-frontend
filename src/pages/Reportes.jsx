@@ -47,8 +47,9 @@ export default function Reportes() {
       const { data } = await api.get('/reportes/stock')
       setStockData(data)
       setStockCargado(true)
-    } catch {
-      toast.error('Error al cargar reporte de stock')
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.response?.status || err.message
+      toast.error(`Error al cargar stock: ${msg}`)
     } finally {
       setCargandoStock(false)
     }
