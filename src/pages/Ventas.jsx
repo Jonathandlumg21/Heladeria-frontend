@@ -177,6 +177,7 @@ export default function Ventas() {
   console.error('Error al imprimir:', e)
   toast.error('Error al generar el ticket')
 }
+}
 
   // ── Cobrar ──
   const cobrar = async () => {
