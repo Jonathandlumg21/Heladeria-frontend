@@ -160,16 +160,22 @@ export default function Ventas() {
     add(0x0A, 0x0A, 0x0A)
     add(0x1D, 0x56, 0x41, 0x00) // corte completo
 
-    fetch('http://localhost:8080/rawbt', {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: new Blob([new Uint8Array(b)]),
-    }).then(() => {
-      toast.success('Ticket enviado a la impresora')
-    }).catch(() => {
-      toast.error('No conectó con RawBT — ve a Ajustes en la app y activa "Servidor HTTP"')
-    })
+    try {
+  // Convertir bytes ESC/POS a base64
+  const uint8  = new Uint8Array(b)
+  let binary   = ''
+  uint8.forEach(byte => binary += String.fromCharCode(byte))
+  const base64 = btoa(binary)
+
+  // Intentar via rawbt: intent (versión gratuita)
+  const intentUri = `rawbt://base64,${base64}`
+  window.location.href = intentUri
+  toast.success('Enviando ticket a RawBT...')
+
+} catch (e) {
+  console.error('Error al imprimir:', e)
+  toast.error('Error al generar el ticket')
+}
   }
 
   // ── Cobrar ──
