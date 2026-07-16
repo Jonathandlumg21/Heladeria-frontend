@@ -41,8 +41,6 @@ export default function Reportes() {
     }
   }
 
-  useEffect(() => { buscar(); cargarStock() }, [])
-
   const cargarStock = async () => {
     setCargandoStock(true)
     try {
@@ -55,6 +53,8 @@ export default function Reportes() {
       setCargandoStock(false)
     }
   }
+
+  useEffect(() => { buscar(); cargarStock() }, [])
 
   const descargarStockPDF = () => {
     const sinStock  = stockData.filter(p => p.stock === 0)
