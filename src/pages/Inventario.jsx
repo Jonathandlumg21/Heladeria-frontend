@@ -4,14 +4,78 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 
 export default function Inventario() {
-  const [productos, setProductos] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [filtro, setFiltro]       = useState('')
-  const [estado, setEstado]       = useState('')
-  const [modal, setModal]         = useState(null)
-  const [cantidad, setCantidad]   = useState('')
-  const [nota, setNota]           = useState('')
-  const { tieneRol }              = useAuth()
+  const [productos, setProductos]         = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [filtro, setFiltro]               = useState('')
+  const [estado, setEstado]               = useState('')
+  const [modal, setModal]                 = useState(null)
+  const [cantidad, setCantidad]           = useState('')
+  const [nota, setNota]                   = useState('')
+  const [stockData, setStockData]         = useState([])
+  const [cargandoStock, setCargandoStock] = useState(false)
+  const [stockCargado, setStockCargado]   = useState(false)
+  const { tieneRol }                      = useAuth()
+
+  const cargarStock = async () => {
+    setCargandoStock(true)
+    try {
+      const { data } = await api.get('/reportes/stock')
+      setStockData(data)
+      setStockCargado(true)
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.response?.status || err.message
+      toast.error(`Error al cargar stock: ${msg}`)
+    } finally {
+      setCargandoStock(false)
+    }
+  }
+
+  const descargarStockPDF = () => {
+    const sinStock  = stockData.filter(p => p.estado === 'sin_stock')
+    const bajoStock = stockData.filter(p => p.estado === 'bajo_stock')
+    const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+    const fila = (p, tipo) => `
+      <tr>
+        <td style="font-weight:600">${p.nombre}</td>
+        <td style="color:#718096">${p.categoria || '—'}</td>
+        <td style="color:#718096">${p.unidad || '—'}</td>
+        <td style="font-weight:700;color:${tipo === 'sin' ? '#a32d2d' : '#854f0b'}">${p.stock}</td>
+        <td>${p.stock_minimo ?? '—'}</td>
+        <td style="font-weight:700;color:#a32d2d">${p.faltante || '—'}</td>
+      </tr>`
+
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Reporte de Stock — ${fecha}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:12px;color:#1a202c;padding:24px}
+  h1{font-size:20px;margin-bottom:2px}
+  .sub{color:#718096;font-size:12px;margin-bottom:24px}
+  h2{font-size:14px;margin:20px 0 8px}
+  table{width:100%;border-collapse:collapse;margin-bottom:20px}
+  th{text-align:left;padding:8px 10px;font-size:11px;color:#718096;text-transform:uppercase;border-bottom:2px solid #e2e8f0;background:#f8fafc}
+  td{padding:8px 10px;border-bottom:1px solid #e2e8f0}
+  .ok{color:#0f6e56;font-weight:700;font-size:14px}
+  @media print{body{padding:16px}}
+</style></head><body>
+<h1>📦 Reporte de Stock</h1>
+<p class="sub">Heladería Sarita &nbsp;·&nbsp; Generado el ${fecha}</p>
+${sinStock.length > 0 ? `
+<h2 style="color:#a32d2d">❌ Sin stock — ${sinStock.length} producto${sinStock.length > 1 ? 's' : ''}</h2>
+<table><thead><tr><th>Producto</th><th>Categoría</th><th>Unidad</th><th>Stock</th><th>Mínimo</th><th>Faltante</th></tr></thead>
+<tbody>${sinStock.map(p => fila(p, 'sin')).join('')}</tbody></table>` : ''}
+${bajoStock.length > 0 ? `
+<h2 style="color:#854f0b">⚠️ Stock bajo — ${bajoStock.length} producto${bajoStock.length > 1 ? 's' : ''}</h2>
+<table><thead><tr><th>Producto</th><th>Categoría</th><th>Unidad</th><th>Stock actual</th><th>Mínimo</th><th>Faltante</th></tr></thead>
+<tbody>${bajoStock.map(p => fila(p, 'bajo')).join('')}</tbody></table>` : ''}
+${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los productos tienen stock suficiente.</p>' : ''}
+<script>window.onload=()=>{window.print()}</script>
+</body></html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+  }
 
   const cargar = () => {
     setLoading(true)
@@ -87,10 +151,106 @@ export default function Inventario() {
     <div>
       <div className="page-header">
         <h1 className="page-title">📦 Inventario</h1>
-        <button className="btn btn-outline btn-sm" onClick={cargar}>🔄 Actualizar</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-primary" onClick={cargarStock} disabled={cargandoStock}>
+            {cargandoStock ? '⏳ Generando...' : '📄 Reporte de stock'}
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={cargar}>🔄 Actualizar</button>
+        </div>
       </div>
 
       <div className="page-content">
+
+        {/* ── REPORTE DE STOCK ── */}
+        {(cargandoStock || stockCargado) && (
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700 }}>📄 Reporte de stock</h2>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-outline btn-sm" onClick={cargarStock} disabled={cargandoStock}>
+                  {cargandoStock ? '⏳ Actualizando...' : '🔄 Actualizar'}
+                </button>
+                {stockCargado && (
+                  <button className="btn btn-primary btn-sm" onClick={descargarStockPDF}>
+                    📄 Descargar PDF
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {cargandoStock ? (
+              <div className="loading-center"><div className="spinner"/> Cargando stock...</div>
+            ) : stockCargado && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px,1fr))', gap: 12, marginBottom: 20 }}>
+                  <div className="metric-card">
+                    <div className="metric-label">Total con alerta</div>
+                    <div className={`metric-value ${stockData.filter(p => p.estado !== 'ok').length > 0 ? 'rojo' : 'verde'}`}>
+                      {stockData.filter(p => p.estado !== 'ok').length}
+                    </div>
+                    <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>productos</div>
+                  </div>
+                  <div className="metric-card" style={{ borderLeft: '4px solid var(--rojo)' }}>
+                    <div className="metric-label">Sin stock</div>
+                    <div className="metric-value rojo">{stockData.filter(p => p.estado === 'sin_stock').length}</div>
+                    <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>agotados</div>
+                  </div>
+                  <div className="metric-card" style={{ borderLeft: '4px solid var(--amarillo)' }}>
+                    <div className="metric-label">Stock bajo</div>
+                    <div className="metric-value amarillo">{stockData.filter(p => p.estado === 'bajo_stock').length}</div>
+                    <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>por debajo del mínimo</div>
+                  </div>
+                </div>
+
+                {stockData.filter(p => p.estado !== 'ok').length === 0 ? (
+                  <div className="card card-body" style={{ textAlign: 'center', color: 'var(--verde)' }}>
+                    <p style={{ fontSize: 15, fontWeight: 600 }}>✅ Todos los productos tienen stock suficiente</p>
+                  </div>
+                ) : (
+                  <div className="card">
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Unidad</th>
+                            <th style={{ textAlign: 'right' }}>Stock actual</th>
+                            <th style={{ textAlign: 'right' }}>Mínimo</th>
+                            <th style={{ textAlign: 'right' }}>Faltante</th>
+                            <th>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {stockData.filter(p => p.estado !== 'ok').map(p => (
+                            <tr key={p.id}>
+                              <td style={{ fontWeight: 600 }}>{p.nombre}</td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{p.categoria || '—'}</td>
+                              <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{p.unidad || '—'}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: p.estado === 'sin_stock' ? 'var(--rojo)' : 'var(--amarillo)' }}>
+                                {p.stock}
+                              </td>
+                              <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{p.stock_minimo ?? '—'}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--rojo)' }}>{p.faltante > 0 ? p.faltante : '—'}</td>
+                              <td>
+                                {p.estado === 'sin_stock'
+                                  ? <span className="badge badge-sinstock">Sin stock</span>
+                                  : <span className="badge badge-bajo">Stock bajo</span>
+                                }
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            <hr style={{ border: 'none', borderTop: '2px solid var(--border)', margin: '24px 0' }} />
+          </div>
+        )}
+
         {/* Métricas */}
         <div className="metrics-grid" style={{ marginBottom: 20 }}>
           <div className="metric-card">
