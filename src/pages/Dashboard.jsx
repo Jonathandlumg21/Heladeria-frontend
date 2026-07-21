@@ -207,7 +207,7 @@ export default function Dashboard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
               <h3 style={{ fontWeight: 700 }}>💰 Ventas por método de pago</h3>
               <div style={{ display: 'flex', gap: 6 }}>
-                {PERIODOS.map(p => (
+                {PERIODOS.filter(p => tieneRol('vendedor') ? p.key === 'dia' : true).map(p => (
                   <button
                     key={p.key}
                     className={`btn btn-sm ${periodoMetodos === p.key ? 'btn-primary' : 'btn-outline'}`}
