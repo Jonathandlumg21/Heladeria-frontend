@@ -158,33 +158,16 @@ export default function Ventas() {
   add(0x0A, 0x0A, 0x0A)
   add(0x1D, 0x56, 0x41, 0x00)
 
-  // ── Enviar a RawBT via intent ──
-  try {
+  // ── Enviar a RawBT via HTTP API (localhost:8080) ──
   const uint8 = new Uint8Array(b)
-
-  // Crear archivo temporal con los bytes ESC/POS
-  const blob     = new Blob([uint8], { type: 'application/octet-stream' })
-  const blobUrl  = URL.createObjectURL(blob)
-
-  // Intent de Android para abrir con RawBT
-  const intent = [
-    `intent:#Intent`,
-    `action=android.intent.action.VIEW`,
-    `type=application/octet-stream`,
-    `S.browser_fallback_url=${encodeURIComponent(blobUrl)}`,
-    `package=ru.a402d.rawbtprinter`,
-    `end`
-  ].join(';')
-
-  window.location.href = `${blobUrl}#${intent}`
-
-  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000)
-  toast.success('Enviando a RawBT...')
-
-} catch (e) {
-  console.error('Error al imprimir:', e)
-  toast.error('Error al generar el ticket')
-}
+  fetch('http://localhost:8080/rawbt', {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: uint8,
+  })
+    .then(() => toast.success('Enviando a impresora...'))
+    .catch(() => toast.error('No se pudo conectar con RawBT. Activa el HTTP API en la app.'))
 }
   // ── Cobrar ──
   const cobrar = async () => {
