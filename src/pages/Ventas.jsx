@@ -73,102 +73,75 @@ export default function Ventas() {
     setRecibo({ ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente,
       fecha: new Date().toLocaleString('es', {
         day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+        hour: '2-digit', minute: '2-digit',
+        timeZone: 'America/Guatemala',
       })
     })
   }
 
   const handleImprimir = () => {
-  if (!recibo) return
+    if (!recibo) return
 
-  const b = []
-  const add = (...bytes) => bytes.forEach(x => b.push(x))
+    const fmtQ = n => `Q${parseFloat(n || 0).toFixed(2)}`
+    const vuelto = recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0
+      ? recibo.pagoCliente - parseFloat(recibo.totalVenta)
+      : null
 
-  const safe = s => s
-    .replace(/[áàâä]/gi, 'a').replace(/[éèêë]/gi, 'e')
-    .replace(/[íìîï]/gi, 'i').replace(/[óòôö]/gi, 'o')
-    .replace(/[úùûü]/gi, 'u').replace(/[ñ]/gi, 'n')
-    .replace(/[Ñ]/g, 'N').replace(/[¡¿]/g, '')
+    const filas = recibo.itemsVendidos.map(i => `
+      <tr>
+        <td style="font-weight:600">${i.nombre}</td>
+        <td style="text-align:center;color:#718096">${i.cantidad}</td>
+        <td style="text-align:right;color:#718096">${fmtQ(i.precio)}</td>
+        <td style="text-align:right;font-weight:700">${fmtQ(parseFloat(i.precio) * i.cantidad)}</td>
+      </tr>`).join('')
 
-  const ln = (str = '') => {
-    const s = safe(String(str))
-    for (let i = 0; i < s.length; i++) b.push(s.charCodeAt(i) & 0xFF)
-    add(0x0A)
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Ticket #${recibo.ventaId}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a202c;padding:24px;max-width:420px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;text-align:center;margin-bottom:2px}
+  .sub{text-align:center;color:#718096;font-size:12px;margin-bottom:4px}
+  .ticket-num{text-align:center;font-size:12px;font-weight:700;color:#1a56a0;margin-bottom:20px}
+  .sep{border:none;border-top:1px dashed #cbd5e0;margin:14px 0}
+  table{width:100%;border-collapse:collapse;margin-bottom:4px}
+  th{font-size:11px;color:#718096;text-transform:uppercase;padding:4px 6px;border-bottom:1px solid #e2e8f0;text-align:left}
+  td{padding:7px 6px;border-bottom:1px solid #f1f5f9}
+  .total-box{text-align:center;margin-top:16px;padding:14px;background:#eff6ff;border-radius:10px;border:1.5px solid #93c5fd}
+  .total-label{font-size:11px;color:#1a56a0;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+  .total-valor{font-size:32px;font-weight:800;color:#1a56a0}
+  .pago-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}
+  .gracias{text-align:center;margin-top:18px;font-weight:700;color:#0f6e56;font-size:14px}
+  @media print{body{padding:10px}}
+</style></head><body>
+<h1>Heladería Sarita</h1>
+<p class="sub">${recibo.fecha}</p>
+<p class="ticket-num">Ticket #${recibo.ventaId}</p>
+<hr class="sep">
+<table>
+  <thead><tr><th>Producto</th><th style="text-align:center">Cant.</th><th style="text-align:right">P. Unit.</th><th style="text-align:right">Subtotal</th></tr></thead>
+  <tbody>${filas}</tbody>
+</table>
+<hr class="sep">
+<div class="total-box">
+  <div class="total-label">Total</div>
+  <div class="total-valor">${fmtQ(recibo.totalVenta)}</div>
+</div>
+${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
+<div style="margin-top:12px">
+  <div class="pago-row"><span style="color:#718096">Entrega</span><span>${fmtQ(recibo.pagoCliente)}</span></div>
+  <div class="pago-row"><span style="font-weight:700">Vuelto</span><span style="font-weight:700;color:${vuelto >= 0 ? '#16a34a' : '#dc2626'}">${fmtQ(vuelto)}</span></div>
+</div>` : ''}
+<div style="margin-top:10px">
+  <div class="pago-row"><span style="color:#718096">Método de pago</span><span style="font-weight:600">${METODO_LABEL[recibo.metodoUsado]}</span></div>
+</div>
+<p class="gracias">¡Gracias por su compra!</p>
+<script>window.onload=()=>{window.print()}</script>
+</body></html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
   }
-  const sep = () => ln('------------------------------------------'.slice(0, 42))
-
-  // Inicializar impresora
-  add(0x1B, 0x40)
-
-  // Nombre tienda — centrado, negrita, doble tamaño
-  add(0x1B, 0x61, 0x01)
-  add(0x1B, 0x45, 0x01)
-  add(0x1D, 0x21, 0x11)
-  ln('HELADERIA SARITA')
-  add(0x1D, 0x21, 0x00)
-  add(0x1B, 0x45, 0x00)
-  add(0x1B, 0x61, 0x00)
-
-  add(0x0A)
-  sep()
-  ln(`Fecha:  ${recibo.fecha}`)
-  ln(`Ticket: #${recibo.ventaId}`)
-  sep()
-
-  // Items
-  recibo.itemsVendidos.forEach(i => {
-    const nombre  = safe(i.nombre).slice(0, 22)
-    const importe = `Q${(parseFloat(i.precio) * i.cantidad).toFixed(2)}`
-    const pad     = Math.max(1, 32 - nombre.length - importe.length)
-    add(0x1B, 0x45, 0x01)
-    ln(`${nombre}${' '.repeat(pad)}${importe}`)
-    add(0x1B, 0x45, 0x00)
-    ln(`  x${i.cantidad} @ Q${parseFloat(i.precio).toFixed(2)} c/u`)
-  })
-
-  sep()
-
-  // Total
-  add(0x1B, 0x61, 0x01)
-  add(0x1B, 0x45, 0x01)
-  add(0x1D, 0x21, 0x11)
-  ln(`TOTAL  Q${recibo.totalVenta}`)
-  add(0x1D, 0x21, 0x00)
-  add(0x1B, 0x45, 0x00)
-  add(0x1B, 0x61, 0x00)
-
-  // Vuelto
-  if (recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0) {
-    ln(`Entrega: Q${recibo.pagoCliente.toFixed(2)}`)
-    add(0x1B, 0x45, 0x01)
-    ln(`Vuelto:  Q${(recibo.pagoCliente - parseFloat(recibo.totalVenta)).toFixed(2)}`)
-    add(0x1B, 0x45, 0x00)
-  }
-
-  ln(`Pago: ${METODO_LABEL[recibo.metodoUsado]}`)
-  sep()
-
-  // Gracias
-  add(0x1B, 0x61, 0x01)
-  add(0x1B, 0x45, 0x01)
-  ln('Gracias por su compra!')
-  add(0x1B, 0x45, 0x00)
-
-  // Avanzar y cortar
-  add(0x0A, 0x0A, 0x0A)
-  add(0x1D, 0x56, 0x41, 0x00)
-
-  // ── Enviar a RawBT via HTTP API (localhost:8080) ──
-  const uint8 = new Uint8Array(b)
-  fetch('http://localhost:8080/rawbt', {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
-    body: uint8,
-  })
-    .then(() => toast.success('Enviando a impresora...'))
-    .catch(() => toast.error('No se pudo conectar con RawBT. Activa el HTTP API en la app.'))
-}
   // ── Cobrar ──
   const cobrar = async () => {
     if (!carrito.length) { toast.error('El carrito está vacío'); return }
