@@ -126,6 +126,7 @@ ${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los
   const fmtFecha = (iso) => new Date(iso).toLocaleString('es', {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
+    timeZone: 'America/Guatemala',
   })
 
   const totalGeneral  = ventas.reduce((s, v) => s + parseFloat(v.total), 0)
