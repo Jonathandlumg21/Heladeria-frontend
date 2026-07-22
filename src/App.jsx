@@ -9,6 +9,7 @@ import Dashboard  from './pages/Dashboard'
 import Productos  from './pages/Productos'
 import Admin      from './pages/Admin'
 import Reportes   from './pages/Reportes'
+import Compras from './pages/Compras'
 
 function AppRoutes() {
   const { usuario } = useAuth()
@@ -59,6 +60,12 @@ function AppRoutes() {
       <Route path="/reportes" element={
         <RutaProtegida roles={['admin']}>
           <Layout><Reportes /></Layout>
+        </RutaProtegida>
+      } />
+
+      <Route path="/compras" element={
+        <RutaProtegida roles={['admin','vendedor']}>
+          <Layout><Compras /></Layout>
         </RutaProtegida>
       } />
 
