@@ -10,6 +10,7 @@ const NAV = [
   { to: '/productos',  icon: '🍦', label: 'Productos',      roles: ['admin'] },
   { to: '/reportes',   icon: '📋', label: 'Reportes',        roles: ['admin'] },
   { to: '/admin',      icon: '⚙️', label: 'Administración', roles: ['admin'] },
+  { to: '/compras',   icon: '🛍️', label: 'Compras',         roles: ['admin', 'vendedor'] },
 ]
 
 export default function Layout({ children }) {
