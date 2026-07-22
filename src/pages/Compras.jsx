@@ -72,85 +72,60 @@ export default function Compras() {
   }
 
   const imprimirCierre = (datos) => {
-    const b   = []
-    const add = (...bytes) => bytes.forEach(x => b.push(x))
-    const safe = s => s
-      .replace(/[áàâä]/gi,'a').replace(/[éèêë]/gi,'e')
-      .replace(/[íìîï]/gi,'i').replace(/[óòôö]/gi,'o')
-      .replace(/[úùûü]/gi,'u').replace(/[ñ]/gi,'n')
-      .replace(/[¡¿]/g,'')
-    const ln = (str = '') => {
-      const s = safe(String(str))
-      for (let i = 0; i < s.length; i++) b.push(s.charCodeAt(i) & 0xFF)
-      add(0x0A)
-    }
-    const sep = () => ln('----------------------------------------')
-
     const fecha = new Date().toLocaleString('es', {
-      day:'2-digit', month:'2-digit', year:'numeric',
-      hour:'2-digit', minute:'2-digit'
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
     })
+    const fmtQ = n => `Q${parseFloat(n || 0).toFixed(2)}`
+    const totalVentas = parseFloat(datos.total_ventas || 0)
+    const neto = parseFloat(datos.efectivo_neto || 0)
 
-    add(0x1B, 0x40)           // init
-    add(0x1B, 0x61, 0x01)    // centrar
-    add(0x1B, 0x45, 0x01)    // negrita
-    add(0x1D, 0x21, 0x11)    // doble tamaño
-    ln('HELADERIA SARITA')
-    add(0x1D, 0x21, 0x00)
-    add(0x1B, 0x45, 0x00)
-    add(0x0A)
-    add(0x1B, 0x45, 0x01)
-    ln('*** CIERRE DEL DIA ***')
-    add(0x1B, 0x45, 0x00)
-    add(0x1B, 0x61, 0x00)    // izquierda
-    add(0x0A)
-    sep()
-    ln(`Fecha: ${fecha}`)
-    sep()
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Cierre del día — ${fecha}</title>
+<style>
+  body{font-family:Arial,sans-serif;font-size:13px;color:#1a202c;padding:24px;max-width:420px;margin:0 auto}
+  h1{font-size:22px;font-weight:800;text-align:center;margin-bottom:2px}
+  .sub{text-align:center;color:#718096;font-size:12px;margin-bottom:20px}
+  .sep{border:none;border-top:1px dashed #cbd5e0;margin:14px 0}
+  .section-title{font-size:11px;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+  .row{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}
+  .row.indent{padding-left:16px;color:#718096}
+  .row.bold{font-weight:700}
+  .neto{text-align:center;margin-top:16px;padding:16px;background:#f0fdf4;border-radius:10px;border:1.5px solid #86efac}
+  .neto-label{font-size:12px;color:#4ade80;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+  .neto-valor{font-size:32px;font-weight:800;color:#16a34a}
+  .neto-neg{background:#fef2f2;border-color:#fca5a5}
+  .neto-neg .neto-label{color:#f87171}
+  .neto-neg .neto-valor{color:#dc2626}
+  @media print{body{padding:10px}}
+</style></head><body>
+<h1>Heladería Sarita</h1>
+<p class="sub">Cierre del día &nbsp;·&nbsp; ${fecha}</p>
+<hr class="sep">
 
-    // Ventas
-    add(0x1B, 0x45, 0x01)
-    ln('VENTAS DEL DIA')
-    add(0x1B, 0x45, 0x00)
-    ln(`Total ventas:    Q${parseFloat(datos.total_ventas || datos.total_ventas_efectivo + datos.total_ventas_tarjeta + datos.total_ventas_fri || 0).toFixed(2)}`)
-    ln(`  Efectivo:      Q${parseFloat(datos.total_ventas_efectivo).toFixed(2)}`)
-    ln(`  Tarjeta:       Q${parseFloat(datos.total_ventas_tarjeta).toFixed(2)}`)
-    ln(`  Fri:           Q${parseFloat(datos.total_ventas_fri).toFixed(2)}`)
-    ln(`  Transacciones: ${datos.cantidad_ventas}`)
-    sep()
+<div class="section-title">Ventas del día</div>
+<div class="row bold"><span>Total ventas</span><span style="color:#16a34a">${fmtQ(totalVentas)}</span></div>
+<div class="row indent"><span>Efectivo</span><span>${fmtQ(datos.total_ventas_efectivo)}</span></div>
+<div class="row indent"><span>Tarjeta</span><span>${fmtQ(datos.total_ventas_tarjeta)}</span></div>
+<div class="row indent"><span>Fri</span><span>${fmtQ(datos.total_ventas_fri)}</span></div>
+<div class="row indent"><span>Transacciones</span><span>${datos.cantidad_ventas}</span></div>
 
-    // Compras
-    add(0x1B, 0x45, 0x01)
-    ln('COMPRAS DEL DIA')
-    add(0x1B, 0x45, 0x00)
-    ln(`Total compras:   Q${parseFloat(datos.total_compras).toFixed(2)}`)
-    sep()
+<hr class="sep">
+<div class="section-title">Compras del día</div>
+<div class="row bold"><span>Total compras</span><span style="color:#dc2626">− ${fmtQ(datos.total_compras)}</span></div>
 
-    // Efectivo neto
-    add(0x1B, 0x61, 0x01)    // centrar
-    add(0x1B, 0x45, 0x01)
-    add(0x1D, 0x21, 0x11)
-    ln(`EFECTIVO NETO`)
-    ln(`Q${parseFloat(datos.efectivo_neto).toFixed(2)}`)
-    add(0x1D, 0x21, 0x00)
-    add(0x1B, 0x45, 0x00)
-    add(0x1B, 0x61, 0x00)
-    sep()
-    add(0x1B, 0x61, 0x01)
-    ln('Gracias!')
-    add(0x0A, 0x0A, 0x0A)
-    add(0x1D, 0x56, 0x41, 0x00) // cortar
+<hr class="sep">
+<div class="neto ${neto < 0 ? 'neto-neg' : ''}">
+  <div class="neto-label">Efectivo neto</div>
+  <div class="neto-valor">${fmtQ(neto)}</div>
+</div>
 
-    // Enviar a RawBT via HTTP API
-    const uint8 = new Uint8Array(b)
-    fetch('http://localhost:8080/rawbt', {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: uint8,
-    })
-      .then(() => toast.success('Imprimiendo cierre...'))
-      .catch(() => toast.error('No se pudo conectar con RawBT. Activa el HTTP API en la app.'))
+<script>window.onload=()=>{window.print()}</script>
+</body></html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
   }
 
   const fmt = (n) => `Q${parseFloat(n || 0).toFixed(2)}`
