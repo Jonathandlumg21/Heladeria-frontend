@@ -75,6 +75,7 @@ export default function Compras() {
     const fecha = new Date().toLocaleString('es', {
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit',
+      timeZone: 'America/Guatemala',
     })
     const fmtQ = n => `Q${parseFloat(n || 0).toFixed(2)}`
     const totalVentas = parseFloat(datos.total_ventas || 0)
@@ -206,7 +207,7 @@ export default function Compras() {
                       </td>
                       <td className="text-muted">{c.usuario}</td>
                       <td className="text-muted">
-                        {new Date(c.fecha).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(c.fecha).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Guatemala' })}
                       </td>
                       {tieneRol('admin') && (
                         <td>
