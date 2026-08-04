@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import ModalFEL from '../components/ModalFEL'
 
 const METODOS = [
   { value: 'efectivo', label: 'Efectivo', icon: '💵' },
@@ -25,6 +26,7 @@ export default function Ventas() {
   const [verRecientes, setVerRecientes] = useState(false)
   const [recientes, setRecientes]     = useState([])
   const [cargandoRec, setCargandoRec] = useState(false)
+  const [modalFEL, setModalFEL] = useState(false)
 
   const cargarProductos = () => {
     setLoading(true)
@@ -322,6 +324,16 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
                 >
                   🖨️ Imprimir ticket
                 </button>
+                 <button
+                  className="btn btn-outline w-full"
+                  style={{ marginBottom: 8 }}
+                  onClick={() => setModalFEL(true)}
+                >
+                     📄 Generar Factura FEL
+                </button>
+
+
+
                 <button
                   className="btn btn-outline w-full"
                   onClick={() => setRecibo(null)}
@@ -515,7 +527,16 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
             </div>
           </div>
         </div>
-      )}
+      )}         
+       
+       {modalFEL && recibo && (
+         <ModalFEL
+           ventaId={recibo.ventaId}
+           onClose={() => setModalFEL(false)}
+         />
+       )}
+
+      
     </>
   )
 }
