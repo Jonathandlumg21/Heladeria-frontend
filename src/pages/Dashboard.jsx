@@ -98,14 +98,14 @@ export default function Dashboard() {
               <div className="metric-value">{resumen.total_productos}</div>
             </div>
             <div className="metric-card">
-              <div className="metric-label">Promedio por venta (mes)</div>
+              <div className="metric-label">Promedio diario (mes)</div>
               <div className="metric-value" style={{ color: 'var(--azul)' }}>
-                {fmt(resumen.ventas_mes?.cantidad > 0
-                  ? resumen.ventas_mes.total / resumen.ventas_mes.cantidad
+                {fmt(resumen.ventas_mes?.total
+                  ? resumen.ventas_mes.total / new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
                   : 0)}
               </div>
               <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                sobre {resumen.ventas_mes?.cantidad} ventas
+                sobre {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} días
               </div>
             </div>
           </div>
