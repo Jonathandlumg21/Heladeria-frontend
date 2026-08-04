@@ -175,6 +175,7 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
       imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito, pagaConNum)
       setCarrito([])
       setPagaCon('')
+      setMetodo('efectivo')
       cargarProductos()
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error al registrar la venta')
