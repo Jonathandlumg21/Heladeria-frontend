@@ -18,10 +18,13 @@ export default function Ventas() {
   const [busqueda, setBusqueda]     = useState('')
   const [categoria, setCategoria]   = useState('')
   const [categorias, setCategorias] = useState([])
-  const [loading, setLoading]       = useState(true)
-  const [cobrando, setCobrando]     = useState(false)
-  const [pagaCon, setPagaCon]       = useState('')
-  const [recibo, setRecibo]         = useState(null)
+  const [loading, setLoading]         = useState(true)
+  const [cobrando, setCobrando]       = useState(false)
+  const [pagaCon, setPagaCon]         = useState('')
+  const [recibo, setRecibo]           = useState(null)
+  const [verRecientes, setVerRecientes] = useState(false)
+  const [recientes, setRecientes]     = useState([])
+  const [cargandoRec, setCargandoRec] = useState(false)
 
   const cargarProductos = () => {
     setLoading(true)
@@ -35,6 +38,19 @@ export default function Ventas() {
   }
 
   useEffect(() => { cargarProductos() }, [])
+
+  const abrirRecientes = async () => {
+    setVerRecientes(true)
+    setCargandoRec(true)
+    try {
+      const { data } = await api.get('/ventas/recientes')
+      setRecientes(data)
+    } catch {
+      toast.error('Error al cargar ventas recientes')
+    } finally {
+      setCargandoRec(false)
+    }
+  }
 
   const productosFiltrados = productos.filter(p => {
     const okNombre = p.nombre.toLowerCase().includes(busqueda.toLowerCase())
@@ -177,9 +193,14 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
     <>
       <div className="page-header">
         <h1 className="page-title">🛒 Punto de venta</h1>
-        <button className="btn btn-outline btn-sm" onClick={cargarProductos}>
-          🔄 Actualizar
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-outline btn-sm" onClick={abrirRecientes}>
+            🧾 Últimas ventas
+          </button>
+          <button className="btn btn-outline btn-sm" onClick={cargarProductos}>
+            🔄 Actualizar
+          </button>
+        </div>
       </div>
 
       <div className="page-content pos-layout" style={{
@@ -437,6 +458,63 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
         </div>
       </div>
 
+      {/* Modal últimas ventas */}
+      {verRecientes && (
+        <div className="modal-overlay" onClick={() => setVerRecientes(false)}>
+          <div className="modal" style={{ maxWidth: 540, width: '95%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">🧾 Últimas 10 ventas</h3>
+              <button className="modal-close" onClick={() => setVerRecientes(false)}>✕</button>
+            </div>
+            <div className="modal-body" style={{ padding: 0 }}>
+              {cargandoRec ? (
+                <div className="loading-center" style={{ padding: 40 }}>
+                  <div className="spinner"/> Cargando...
+                </div>
+              ) : recientes.length === 0 ? (
+                <div className="empty-state" style={{ padding: 40 }}>
+                  <div className="empty-icon">🧾</div>
+                  <p>No hay ventas registradas</p>
+                </div>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid var(--border)' }}># Ticket</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid var(--border)' }}>Hora</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid var(--border)' }}>Vendedor</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'left', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid var(--border)' }}>Método</th>
+                      <th style={{ padding: '10px 16px', textAlign: 'right', color: 'var(--text-muted)', fontSize: 11, textTransform: 'uppercase', borderBottom: '2px solid var(--border)' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recientes.map(v => {
+                      const cfg = { efectivo: { label: 'Efectivo', color: '#0f6e56' }, tarjeta: { label: 'Tarjeta', color: '#1a56a0' }, fri: { label: 'Fri', color: '#854f0b' } }[v.metodo_pago] || { label: v.metodo_pago, color: '#718096' }
+                      return (
+                        <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '10px 16px', fontWeight: 700 }}>#{v.id}</td>
+                          <td style={{ padding: '10px 16px', color: 'var(--text-muted)' }}>
+                            {new Date(v.fecha).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Guatemala' })}
+                          </td>
+                          <td style={{ padding: '10px 16px' }}>{v.vendedor}</td>
+                          <td style={{ padding: '10px 16px' }}>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: cfg.color, background: cfg.color + '15', padding: '2px 8px', borderRadius: 12 }}>
+                              {cfg.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700 }}>
+                            Q{parseFloat(v.total).toFixed(2)}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
