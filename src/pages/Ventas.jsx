@@ -432,15 +432,6 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
                 {cobrando ? 'Procesando...' : `Cobrar Q${total.toFixed(2)}`}
               </button>
 
-              {carrito.length > 0 && (
-                <button
-                  className="btn btn-outline w-full"
-                  style={{ marginTop: 8 }}
-                  onClick={() => setCarrito([])}
-                >
-                  Limpiar carrito
-                </button>
-              )}
             </>}
           </div>
         </div>
