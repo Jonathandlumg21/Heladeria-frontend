@@ -8,6 +8,7 @@ export default function ModalFEL({ ventaId, onClose }) {
   const [cargando, setCargando]   = useState(false)
   const [resultado, setResultado] = useState(null)
   const [error, setError]         = useState(null)
+  const [cargandoPdf, setCargandoPdf] = useState(false)
 
   const generarFEL = async () => {
     setCargando(true)
@@ -25,6 +26,19 @@ export default function ModalFEL({ ventaId, onClose }) {
       toast.error('Error al generar la factura')
     } finally {
       setCargando(false)
+    }
+  }
+
+  const verPdf = async () => {
+    setCargandoPdf(true)
+    try {
+      const res = await api.get(`/fel/pdf/${ventaId}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(res.data)
+      window.open(url, '_blank')
+    } catch {
+      toast.error('No se pudo obtener el PDF de la factura')
+    } finally {
+      setCargandoPdf(false)
     }
   }
 
@@ -57,15 +71,14 @@ export default function ModalFEL({ ventaId, onClose }) {
                   <span style={{ fontWeight: 600 }}>{resultado.numero_dte}</span>
                 </div>
               </div>
-              <a
-                href={resultado.pdf_url}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
                 className="btn btn-primary w-full"
-                style={{ marginBottom: 8, display: 'block', textAlign: 'center', padding: 12 }}
+                style={{ marginBottom: 8, padding: 12 }}
+                onClick={verPdf}
+                disabled={cargandoPdf}
               >
-                📥 Ver PDF de la factura
-              </a>
+                {cargandoPdf ? 'Cargando PDF...' : '📥 Ver PDF de la factura'}
+              </button>
               <button className="btn btn-outline w-full" onClick={onClose}>
                 Cerrar
               </button>
