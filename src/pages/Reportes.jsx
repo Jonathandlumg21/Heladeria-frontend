@@ -10,7 +10,9 @@ const METODO_CONFIG = {
   efectivo: { label: 'Efectivo', icon: '💵', color: '#0f6e56' },
   tarjeta:  { label: 'Tarjeta',  icon: '💳', color: '#1a56a0' },
   fri:      { label: 'Fri',      icon: '📱', color: '#854f0b' },
+  mixto:    { label: 'Mixto',    icon: '🔀', color: '#7c3aed' },
 }
+const METODO_DESCONOCIDO = { label: 'Desconocido', icon: '❓', color: '#718096' }
 
 export default function Reportes() {
   const [desde, setDesde]         = useState(PRIMER_DIA)
@@ -130,11 +132,24 @@ ${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los
   })
 
   const totalGeneral  = ventas.reduce((s, v) => s + parseFloat(v.total), 0)
-  const porMetodo     = ['efectivo', 'tarjeta', 'fri'].map(m => ({
-    metodo: m,
-    total: ventas.filter(v => v.metodo_pago === m).reduce((s, v) => s + parseFloat(v.total), 0),
-    cantidad: ventas.filter(v => v.metodo_pago === m).length,
-  }))
+  // Decompone cada venta usando su desglose real de pagos (v.pagos), para que
+  // una venta con pago dividido sume su parte correspondiente a cada método
+  // en vez de perderse o contarse entera en un solo balde.
+  const porMetodo = ['efectivo', 'tarjeta', 'fri'].map(m => {
+    let total = 0, cantidad = 0
+    for (const v of ventas) {
+      const pagos = Array.isArray(v.pagos) && v.pagos.length > 0
+        ? v.pagos
+        : [{ metodo_pago: v.metodo_pago, monto: v.total }]
+      for (const p of pagos) {
+        if (p.metodo_pago === m) {
+          total += parseFloat(p.monto)
+          cantidad += 1
+        }
+      }
+    }
+    return { metodo: m, total, cantidad }
+  })
 
   return (
     <div>
@@ -325,8 +340,9 @@ ${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los
                 </thead>
                 <tbody>
                   {ventas.map(v => {
-                    const cfg        = METODO_CONFIG[v.metodo_pago]
+                    const cfg        = METODO_CONFIG[v.metodo_pago] || METODO_DESCONOCIDO
                     const abierto    = detalle?.id === v.id
+                    const esMixto    = v.metodo_pago === 'mixto' && Array.isArray(v.pagos) && v.pagos.length > 1
                     return (
                       <>
                         <tr key={v.id} style={{ background: abierto ? '#f0f6ff' : undefined }}>
@@ -341,6 +357,11 @@ ${sinStock.length === 0 && bajoStock.length === 0 ? '<p class="ok">✅ Todos los
                             }}>
                               {cfg.icon} {cfg.label}
                             </span>
+                            {esMixto && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                                {v.pagos.map(p => `${METODO_CONFIG[p.metodo_pago]?.label || p.metodo_pago} Q${parseFloat(p.monto).toFixed(2)}`).join(' + ')}
+                              </div>
+                            )}
                           </td>
                           <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>{v.num_items} productos</td>
                           <td style={{ textAlign: 'right', fontWeight: 700 }}>{fmt(v.total)}</td>

@@ -9,7 +9,14 @@ const METODOS = [
   { value: 'fri',      label: 'Fri',      icon: '📱' },
 ]
 
-const METODO_LABEL = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', fri: 'Fri' }
+const METODO_LABEL = { efectivo: 'Efectivo', tarjeta: 'Tarjeta', fri: 'Fri', mixto: 'Mixto' }
+
+const METODO_BADGE = {
+  efectivo: { label: 'Efectivo', color: '#0f6e56' },
+  tarjeta:  { label: 'Tarjeta',  color: '#1a56a0' },
+  fri:      { label: 'Fri',      color: '#854f0b' },
+  mixto:    { label: 'Mixto',    color: '#7c3aed' },
+}
 
 
 export default function Ventas() {
@@ -27,6 +34,8 @@ export default function Ventas() {
   const [recientes, setRecientes]     = useState([])
   const [cargandoRec, setCargandoRec] = useState(false)
   const [modalFEL, setModalFEL] = useState(false)
+  const [dividirPago, setDividirPago] = useState(false)
+  const [pagosSplit, setPagosSplit] = useState({ efectivo: '', tarjeta: '', fri: '' })
 
   const cargarProductos = () => {
     setLoading(true)
@@ -87,8 +96,11 @@ export default function Ventas() {
   const pagaConNum = parseFloat(pagaCon) || 0
   const vuelto     = metodo === 'efectivo' && pagaConNum > 0 ? pagaConNum - total : null
 
-  const imprimirTicket = (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente) => {
-    setRecibo({ ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente,
+  const sumaSplit = Object.values(pagosSplit).reduce((s, v) => s + (parseFloat(v) || 0), 0)
+  const faltanteSplit = total - sumaSplit
+
+  const imprimirTicket = (ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente, pagosDetalle) => {
+    setRecibo({ ventaId, totalVenta, metodoUsado, itemsVendidos, pagoCliente, pagosDetalle,
       fecha: new Date().toLocaleString('es', {
         day: '2-digit', month: '2-digit', year: 'numeric',
         hour: '2-digit', minute: '2-digit',
@@ -150,7 +162,10 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
   <div class="pago-row"><span style="font-weight:700">Vuelto</span><span style="font-weight:700;color:${vuelto >= 0 ? '#16a34a' : '#dc2626'}">${fmtQ(vuelto)}</span></div>
 </div>` : ''}
 <div style="margin-top:10px">
-  <div class="pago-row"><span style="color:#718096">Método de pago</span><span style="font-weight:600">${METODO_LABEL[recibo.metodoUsado]}</span></div>
+  ${recibo.pagosDetalle && recibo.pagosDetalle.length > 1
+    ? recibo.pagosDetalle.map(p => `
+  <div class="pago-row"><span style="color:#718096">${METODO_LABEL[p.metodo_pago]}</span><span style="font-weight:600">${fmtQ(p.monto)}</span></div>`).join('')
+    : `<div class="pago-row"><span style="color:#718096">Método de pago</span><span style="font-weight:600">${METODO_LABEL[recibo.metodoUsado]}</span></div>`}
 </div>
 <p class="gracias">¡Gracias por su compra!</p>
 <script>window.onload=()=>{window.print()}</script>
@@ -163,6 +178,27 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
   // ── Cobrar ──
   const cobrar = async () => {
     if (!carrito.length) { toast.error('El carrito está vacío'); return }
+
+    let pagosPayload = null
+    if (dividirPago) {
+      pagosPayload = Object.entries(pagosSplit)
+        .filter(([, monto]) => parseFloat(monto) > 0)
+        .map(([metodo_pago, monto]) => ({ metodo_pago, monto: parseFloat(monto) }))
+
+      if (pagosPayload.length < 2) {
+        toast.error('Ingresa montos en al menos 2 métodos para dividir el pago')
+        return
+      }
+      if (Math.abs(faltanteSplit) > 0.01) {
+        toast.error(
+          faltanteSplit > 0
+            ? `Falta Q${faltanteSplit.toFixed(2)} por asignar`
+            : `Sobran Q${Math.abs(faltanteSplit).toFixed(2)} respecto al total`
+        )
+        return
+      }
+    }
+
     setCobrando(true)
     try {
       const { data } = await api.post('/ventas', {
@@ -171,13 +207,16 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
           cantidad:        i.cantidad,
           precio_unitario: i.precio,
         })),
-        metodo_pago: metodo,
+        ...(pagosPayload ? { pagos: pagosPayload } : { metodo_pago: metodo }),
       })
+      const metodoFinal = pagosPayload ? 'mixto' : metodo
       toast.success(`¡Venta registrada! Total: Q${total.toFixed(2)}`)
-      imprimirTicket(data.venta_id, total.toFixed(2), metodo, carrito, pagaConNum)
+      imprimirTicket(data.venta_id, total.toFixed(2), metodoFinal, carrito, pagaConNum, pagosPayload)
       setCarrito([])
       setPagaCon('')
       setMetodo('efectivo')
+      setDividirPago(false)
+      setPagosSplit({ efectivo: '', tarjeta: '', fri: '' })
       cargarProductos()
     } catch (e) {
       toast.error(e.response?.data?.error || 'Error al registrar la venta')
@@ -393,7 +432,7 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
               Total: Q{total.toFixed(2)}
             </div>}
 
-            {!recibo && metodo === 'efectivo' && (
+            {!recibo && metodo === 'efectivo' && !dividirPago && (
               <div style={{ marginBottom: 14 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
                   PAGO DEL CLIENTE
@@ -434,34 +473,93 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
             )}
 
             {!recibo && <>
-              <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-                MÉTODO DE PAGO
-              </p>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-                {METODOS.map(m => (
-                  <button
-                    key={m.value}
-                    onClick={() => { setMetodo(m.value); if (m.value !== 'efectivo') setPagaCon('') }}
-                    style={{
-                      flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
-                      borderRadius: 8, textAlign: 'center',
-                      fontWeight: metodo === m.value ? 700 : 400,
-                      border:     metodo === m.value ? '2px solid var(--azul)' : '1px solid var(--border)',
-                      background: metodo === m.value ? 'var(--azul-claro)' : '#fff',
-                      color:      metodo === m.value ? 'var(--azul)' : 'var(--text-muted)',
-                    }}
-                  >
-                    <div style={{ fontSize: 18 }}>{m.icon}</div>
-                    {m.label}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>
+                  MÉTODO DE PAGO
+                </p>
+                <button
+                  onClick={() => {
+                    setDividirPago(d => !d)
+                    setPagosSplit({ efectivo: '', tarjeta: '', fri: '' })
+                    setPagaCon('')
+                  }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600,
+                    color: dividirPago ? 'var(--rojo)' : 'var(--azul)',
+                  }}
+                >
+                  {dividirPago ? '✕ Cancelar división' : '🔀 Dividir pago'}
+                </button>
               </div>
+
+              {dividirPago ? (
+                <div style={{ marginBottom: 16 }}>
+                  {METODOS.map(m => (
+                    <div key={m.value} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <span style={{ width: 80, fontSize: 13 }}>{m.icon} {m.label}</span>
+                      <div style={{ position: 'relative', flex: 1 }}>
+                        <span style={{
+                          position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)',
+                          fontWeight: 700, color: 'var(--text-muted)', fontSize: 13,
+                        }}>Q</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={pagosSplit[m.value]}
+                          onChange={e => setPagosSplit(s => ({ ...s, [m.value]: e.target.value }))}
+                          style={{
+                            width: '100%', padding: '7px 8px 7px 20px', fontSize: 14,
+                            border: '1px solid var(--border)', borderRadius: 8,
+                            boxSizing: 'border-box', outline: 'none',
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{
+                    marginTop: 8, padding: '8px 12px', borderRadius: 8, textAlign: 'right',
+                    fontSize: 14, fontWeight: 700,
+                    background: Math.abs(faltanteSplit) < 0.01 ? '#e6f9ed' : '#fde8e8',
+                    color:      Math.abs(faltanteSplit) < 0.01 ? '#1a7f3c' : 'var(--rojo)',
+                    border:     Math.abs(faltanteSplit) < 0.01 ? '1px solid #a3d9b1' : '1px solid #f5a0a0',
+                  }}>
+                    {Math.abs(faltanteSplit) < 0.01
+                      ? '✓ Montos completos'
+                      : faltanteSplit > 0
+                        ? `Falta: Q${faltanteSplit.toFixed(2)}`
+                        : `Sobra: Q${Math.abs(faltanteSplit).toFixed(2)}`}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                  {METODOS.map(m => (
+                    <button
+                      key={m.value}
+                      onClick={() => { setMetodo(m.value); if (m.value !== 'efectivo') setPagaCon('') }}
+                      style={{
+                        flex: 1, padding: '9px 4px', fontSize: 12, cursor: 'pointer',
+                        borderRadius: 8, textAlign: 'center',
+                        fontWeight: metodo === m.value ? 700 : 400,
+                        border:     metodo === m.value ? '2px solid var(--azul)' : '1px solid var(--border)',
+                        background: metodo === m.value ? 'var(--azul-claro)' : '#fff',
+                        color:      metodo === m.value ? 'var(--azul)' : 'var(--text-muted)',
+                      }}
+                    >
+                      <div style={{ fontSize: 18 }}>{m.icon}</div>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <button
                 className="btn btn-success w-full"
                 style={{ padding: '13px', fontSize: 15 }}
                 onClick={cobrar}
-                disabled={cobrando || carrito.length === 0}
+                disabled={cobrando || carrito.length === 0 || (dividirPago && Math.abs(faltanteSplit) > 0.01)}
               >
                 {cobrando ? 'Procesando...' : `Cobrar Q${total.toFixed(2)}`}
               </button>
@@ -502,7 +600,8 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
                   </thead>
                   <tbody>
                     {recientes.map(v => {
-                      const cfg = { efectivo: { label: 'Efectivo', color: '#0f6e56' }, tarjeta: { label: 'Tarjeta', color: '#1a56a0' }, fri: { label: 'Fri', color: '#854f0b' } }[v.metodo_pago] || { label: v.metodo_pago, color: '#718096' }
+                      const cfg = METODO_BADGE[v.metodo_pago] || { label: v.metodo_pago, color: '#718096' }
+                      const esMixto = v.metodo_pago === 'mixto' && Array.isArray(v.pagos) && v.pagos.length > 1
                       return (
                         <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '10px 16px', fontWeight: 700 }}>#{v.id}</td>
@@ -514,6 +613,11 @@ ${recibo.metodoUsado === 'efectivo' && recibo.pagoCliente > 0 ? `
                             <span style={{ fontSize: 12, fontWeight: 600, color: cfg.color, background: cfg.color + '15', padding: '2px 8px', borderRadius: 12 }}>
                               {cfg.label}
                             </span>
+                            {esMixto && (
+                              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                                {v.pagos.map(p => `${METODO_LABEL[p.metodo_pago]} Q${parseFloat(p.monto).toFixed(2)}`).join(' + ')}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700 }}>
                             Q{parseFloat(v.total).toFixed(2)}
