@@ -184,7 +184,7 @@ export default function Admin() {
                       </span>
                     </td>
                     <td className="text-muted">
-                      {new Date(u.creado_en).toLocaleDateString('es')}
+                      {new Date(u.creado_en).toLocaleDateString('es', { timeZone: 'America/Guatemala' })}
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>

@@ -33,7 +33,7 @@ export default function Inventario() {
   const descargarStockPDF = () => {
     const sinStock  = stockData.filter(p => p.estado === 'sin_stock')
     const bajoStock = stockData.filter(p => p.estado === 'bajo_stock')
-    const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Guatemala' })
 
     const fila = (p, tipo) => `
       <tr>

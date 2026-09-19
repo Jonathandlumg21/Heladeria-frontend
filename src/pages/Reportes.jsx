@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
 
-const HOY  = new Date().toISOString().slice(0, 10)
-const PRIMER_DIA = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  .toISOString().slice(0, 10)
+const HOY = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Guatemala' }).format(new Date())
+const PRIMER_DIA = `${HOY.slice(0, 7)}-01`
 
 const METODO_CONFIG = {
   efectivo: { label: 'Efectivo', icon: '💵', color: '#0f6e56' },
@@ -62,7 +61,7 @@ export default function Reportes() {
   const descargarStockPDF = () => {
     const sinStock  = stockData.filter(p => p.estado === 'sin_stock')
     const bajoStock = stockData.filter(p => p.estado === 'bajo_stock')
-    const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    const fecha = new Date().toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Guatemala' })
 
     const fila = (p, tipo) => `
       <tr>

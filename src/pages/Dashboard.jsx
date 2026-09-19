@@ -37,7 +37,7 @@ export default function Dashboard() {
       api.get('/dashboard/ventas-diarias').then(r => setDiarias(
         r.data.map(d => ({
           ...d,
-          dia:   new Date(d.dia).toLocaleDateString('es', { day: '2-digit', month: 'short' }),
+          dia:   new Date(`${String(d.dia).slice(0, 10)}T12:00:00`).toLocaleDateString('es', { day: '2-digit', month: 'short' }),
           total: parseFloat(d.total),
         }))
       ))
