@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import logo from '../assets/logo.png'
+import PullToRefresh from './PullToRefresh'
 
 const NAV = [
   { to: '/ventas',     icon: '🛒', label: 'Ventas',         roles: ['admin','vendedor'] },
@@ -34,6 +35,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="layout">
+      <PullToRefresh />
       {sidebarOpen && <div className="sidebar-overlay" onClick={cerrar}/>}
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
