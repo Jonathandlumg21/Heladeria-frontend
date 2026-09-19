@@ -26,6 +26,7 @@ export default function Dashboard() {
   const [mensuales, setMensuales]       = useState([])
   const [stockBajo, setStockBajo]       = useState([])
   const [masVendidos, setMasVendidos]   = useState([])
+  const [comprasDiarias, setComprasDiarias] = useState([])
   const [vistaMes, setVistaMes]         = useState(true)
   const [metodosPago, setMetodosPago]   = useState([])
   const [periodoMetodos, setPeriodo]    = useState('dia')
@@ -45,6 +46,14 @@ export default function Dashboard() {
         r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
       ))
       api.get('/dashboard/stock-bajo').then(r => setStockBajo(r.data))
+      api.get('/dashboard/compras-diarias').then(r => setComprasDiarias(
+        r.data.map(d => ({
+          ...d,
+          etiqueta: new Date(`${String(d.dia).slice(0, 10)}T12:00:00`).toLocaleDateString('es', { day: '2-digit', month: 'short' }),
+          ventas:   parseFloat(d.ventas),
+          compras:  parseFloat(d.compras),
+        }))
+      ))
       api.get('/dashboard/productos-mas-vendidos').then(r => setMasVendidos(
         r.data.map(d => ({ ...d, total: parseFloat(d.total) }))
       ))
@@ -62,6 +71,11 @@ export default function Dashboard() {
   const fmt = (n) => `Q${Number(n || 0).toLocaleString('es', { minimumFractionDigits: 2 })}`
 
   const grandTotalMetodos = metodosPago.reduce((s, x) => s + parseFloat(x.total || 0), 0)
+
+  const ventasMes       = parseFloat(resumen?.ventas_mes?.total || 0)
+  const margenMes       = ventasMes > 0 ? ((resumen?.utilidad_neta_mes || 0) / ventasMes) * 100 : 0
+  const totalVentasDia  = comprasDiarias.reduce((s, d) => s + d.ventas, 0)
+  const totalComprasDia = comprasDiarias.reduce((s, d) => s + d.compras, 0)
 
   return (
     <div>
@@ -117,15 +131,127 @@ export default function Dashboard() {
               <div className="metric-value rojo">{fmt(resumen.gastos_pagos_mes)}</div>
             </div>
             <div className="metric-card">
+              <div className="metric-label">Compras hoy</div>
+              <div className="metric-value rojo">{fmt(resumen.compras_hoy)}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Compras este mes</div>
+              <div className="metric-value rojo">{fmt(resumen.compras_mes)}</div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {resumen.compras_cantidad_mes} {resumen.compras_cantidad_mes === 1 ? 'compra' : 'compras'}
+              </div>
+            </div>
+            <div className="metric-card">
               <div className="metric-label">Utilidad neta del mes</div>
               <div className={`metric-value ${resumen.utilidad_neta_mes >= 0 ? 'verde' : 'rojo'}`}>
                 {fmt(resumen.utilidad_neta_mes)}
               </div>
               <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                Ventas − pedidos − pagos del negocio
+                Ventas − pedidos − pagos − compras
               </div>
             </div>
           </div>
+        )}
+
+        {/* Utilidad neta del mes: desglose + compras diarias */}
+        {tieneRol('admin', 'propietario') && resumen && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
+              <div className="card card-body">
+                <h3 style={{ fontWeight: 700, marginBottom: 16 }}>🧮 Utilidad neta del mes</h3>
+                {[
+                  { label: 'Ventas del mes',    valor: ventasMes,                  signo: '+', color: 'var(--verde)' },
+                  { label: 'Pedidos',           valor: resumen.gastos_pedidos_mes, signo: '−', color: 'var(--rojo)' },
+                  { label: 'Pagos del negocio', valor: resumen.gastos_pagos_mes,   signo: '−', color: 'var(--rojo)' },
+                  { label: 'Compras diarias',   valor: resumen.compras_mes,        signo: '−', color: 'var(--rojo)' },
+                ].map(r => (
+                  <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: 14, borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{r.signo} {r.label}</span>
+                    <span style={{ fontWeight: 600, color: r.color }}>{r.signo === '−' ? '− ' : ''}{fmt(r.valor)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 14 }}>
+                  <span style={{ fontWeight: 700, fontSize: 15 }}>= Utilidad neta</span>
+                  <span style={{ fontWeight: 800, fontSize: 24, color: resumen.utilidad_neta_mes >= 0 ? 'var(--verde)' : 'var(--rojo)' }}>
+                    {fmt(resumen.utilidad_neta_mes)}
+                  </span>
+                </div>
+                <div className="text-muted" style={{ fontSize: 12, marginTop: 6, textAlign: 'right' }}>
+                  Margen: {margenMes.toFixed(1)}% de las ventas
+                </div>
+              </div>
+
+              <div className="card card-body">
+                <h3 style={{ fontWeight: 700, marginBottom: 16 }}>🛍️ Compras diarias del mes</h3>
+                {comprasDiarias.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: 40 }}>
+                    Sin compras registradas este mes
+                  </p>
+                ) : (
+                  <ResponsiveContainer width="100%" height={240}>
+                    <BarChart data={comprasDiarias}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                      <XAxis dataKey="etiqueta" tick={{ fontSize: 10 }}/>
+                      <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `Q${v}`}/>
+                      <Tooltip formatter={v => [fmt(v), 'Compras']}/>
+                      <Bar dataKey="compras" fill="#a32d2d" radius={[4,4,0,0]}/>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
+            <div className="card" style={{ marginBottom: 24 }}>
+              <div className="card-body" style={{ paddingBottom: 8 }}>
+                <h3 style={{ fontWeight: 700 }}>📅 Detalle diario: ventas − compras</h3>
+              </div>
+              <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Día</th>
+                      <th>Ventas</th>
+                      <th>Compras</th>
+                      <th>Ventas − compras</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comprasDiarias.length === 0 ? (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+                        Sin datos este mes
+                      </td></tr>
+                    ) : [...comprasDiarias].reverse().map(d => (
+                      <tr key={d.dia}>
+                        <td style={{ fontWeight: 500 }}>{d.etiqueta}</td>
+                        <td style={{ color: 'var(--verde)', fontWeight: 600 }}>{fmt(d.ventas)}</td>
+                        <td style={{ color: 'var(--rojo)', fontWeight: 600 }}>
+                          {fmt(d.compras)}
+                          {d.cantidad_compras > 0 && (
+                            <span className="text-muted" style={{ fontSize: 11, fontWeight: 400 }}> ({d.cantidad_compras})</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 700, color: d.ventas - d.compras >= 0 ? 'var(--verde)' : 'var(--rojo)' }}>
+                          {fmt(d.ventas - d.compras)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  {comprasDiarias.length > 0 && (
+                    <tfoot>
+                      <tr style={{ fontWeight: 800 }}>
+                        <td>Total del mes</td>
+                        <td style={{ color: 'var(--verde)' }}>{fmt(totalVentasDia)}</td>
+                        <td style={{ color: 'var(--rojo)' }}>{fmt(totalComprasDia)}</td>
+                        <td style={{ color: totalVentasDia - totalComprasDia >= 0 ? 'var(--verde)' : 'var(--rojo)' }}>
+                          {fmt(totalVentasDia - totalComprasDia)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+          </>
         )}
 
         {tieneRol('admin', 'propietario') && <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
