@@ -6,6 +6,10 @@ const VACÍO = { nombre: '', email: '', password: '', rol: 'vendedor', activo: t
 const ROL_LABEL = { admin: 'Administrador', vendedor: 'Vendedor', bodeguero: 'Bodeguero', propietario: 'Propietario' }
 const ROL_BADGE = { admin: 'badge-admin', vendedor: 'badge-vendedor', bodeguero: 'badge-bodeguero', propietario: 'badge-propietario' }
 
+const GASTO_VACÍO = { categoria: 'pedido', descripcion: '', monto: '', fecha: '' }
+const CATEGORIA_LABEL = { pedido: 'Pedido', pago_negocio: 'Pago del negocio' }
+const fmtQ = (n) => `Q${parseFloat(n || 0).toFixed(2)}`
+
 export default function Admin() {
   const [usuarios, setUsuarios]         = useState([])
   const [modal, setModal]               = useState(null)
@@ -18,9 +22,56 @@ export default function Admin() {
   const [nuevaCat, setNuevaCat]         = useState('')
   const [guardandoCat, setGuardandoCat] = useState(false)
 
+  const [gastos, setGastos]             = useState([])
+  const [filtroGasto, setFiltroGasto]   = useState('')
+  const [formGasto, setFormGasto]       = useState(GASTO_VACÍO)
+  const [guardandoGasto, setGuardandoGasto] = useState(false)
+  const [resumenMes, setResumenMes]     = useState(null)
+
   const cargar = () => api.get('/usuarios').then(r => setUsuarios(r.data))
   const cargarCats = () => api.get('/usuarios/categorias').then(r => setCategorias(r.data))
-  useEffect(() => { cargar(); cargarCats() }, [])
+  const cargarGastos = (categoria = filtroGasto) =>
+    api.get('/gastos', { params: categoria ? { categoria } : {} }).then(r => setGastos(r.data))
+  const cargarResumenMes = () => api.get('/gastos/resumen-mes').then(r => setResumenMes(r.data))
+  useEffect(() => { cargar(); cargarCats(); cargarGastos(''); cargarResumenMes() }, [])
+
+  const agregarGasto = async () => {
+    if (!formGasto.descripcion.trim() || !formGasto.monto || parseFloat(formGasto.monto) <= 0) {
+      toast.error('Descripción y monto válido son requeridos'); return
+    }
+    setGuardandoGasto(true)
+    try {
+      await api.post('/gastos', {
+        categoria:   formGasto.categoria,
+        descripcion: formGasto.descripcion.trim(),
+        monto:       parseFloat(formGasto.monto),
+        fecha:       formGasto.fecha || undefined,
+      })
+      toast.success('Registro agregado')
+      setFormGasto(f => ({ ...GASTO_VACÍO, categoria: f.categoria }))
+      cargarGastos()
+      cargarResumenMes()
+    } catch (e) {
+      toast.error(e.response?.data?.error || 'Error al guardar')
+    } finally {
+      setGuardandoGasto(false)
+    }
+  }
+
+  const eliminarGasto = async (id) => {
+    if (!confirm('¿Eliminar este registro?')) return
+    try {
+      await api.delete(`/gastos/${id}`)
+      toast.success('Registro eliminado')
+      cargarGastos()
+      cargarResumenMes()
+    } catch {
+      toast.error('Error al eliminar')
+    }
+  }
+
+  const totalListaPedidos = gastos.filter(g => g.categoria === 'pedido').reduce((s, g) => s + parseFloat(g.monto), 0)
+  const totalListaPagos   = gastos.filter(g => g.categoria === 'pago_negocio').reduce((s, g) => s + parseFloat(g.monto), 0)
 
   const agregarCategoria = async () => {
     if (!nuevaCat.trim()) return
@@ -156,6 +207,128 @@ export default function Admin() {
                 >✕</button>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Pedidos y pagos del negocio */}
+        <div className="card card-body" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>💸 Pedidos y pagos del negocio</h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div className="metric-card">
+              <div className="metric-label">Pedidos este mes</div>
+              <div className="metric-value rojo">{fmtQ(resumenMes?.total_pedidos)}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Pagos del negocio este mes</div>
+              <div className="metric-value rojo">{fmtQ(resumenMes?.total_pagos)}</div>
+            </div>
+          </div>
+
+          <div className="form-row" style={{ marginBottom: 14 }}>
+            <div className="form-group">
+              <label className="form-label">Categoría</label>
+              <select
+                className="form-control"
+                value={formGasto.categoria}
+                onChange={e => setFormGasto(f => ({ ...f, categoria: e.target.value }))}
+              >
+                <option value="pedido">Pedido</option>
+                <option value="pago_negocio">Pago del negocio</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Descripción</label>
+              <input
+                className="form-control"
+                placeholder="Ej: Pago a proveedor de insumos"
+                value={formGasto.descripcion}
+                onChange={e => setFormGasto(f => ({ ...f, descripcion: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && agregarGasto()}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Monto (Q)</label>
+              <input
+                type="number"
+                className="form-control"
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                value={formGasto.monto}
+                onChange={e => setFormGasto(f => ({ ...f, monto: e.target.value }))}
+                onKeyDown={e => e.key === 'Enter' && agregarGasto()}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Fecha (opcional)</label>
+              <input
+                type="date"
+                className="form-control"
+                value={formGasto.fecha}
+                onChange={e => setFormGasto(f => ({ ...f, fecha: e.target.value }))}
+              />
+            </div>
+          </div>
+          <button className="btn btn-primary" onClick={agregarGasto} disabled={guardandoGasto} style={{ marginBottom: 20 }}>
+            {guardandoGasto ? 'Guardando...' : '+ Agregar registro'}
+          </button>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {[{ key: '', label: 'Todos' }, { key: 'pedido', label: 'Pedidos' }, { key: 'pago_negocio', label: 'Pagos del negocio' }].map(f => (
+                <button
+                  key={f.key}
+                  className={`btn btn-sm ${filtroGasto === f.key ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => { setFiltroGasto(f.key); cargarGastos(f.key) }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+              Total mostrado — Pedidos: <strong style={{ color: 'var(--rojo)' }}>{fmtQ(totalListaPedidos)}</strong>
+              {' · '}Pagos: <strong style={{ color: 'var(--rojo)' }}>{fmtQ(totalListaPagos)}</strong>
+            </div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoría</th>
+                  <th>Descripción</th>
+                  <th>Monto</th>
+                  <th>Usuario</th>
+                  <th>Fecha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {gastos.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+                    No hay registros
+                  </td></tr>
+                ) : gastos.map(g => (
+                  <tr key={g.id}>
+                    <td>
+                      <span className={`badge ${g.categoria === 'pedido' ? 'badge-vendedor' : 'badge-bodeguero'}`}>
+                        {CATEGORIA_LABEL[g.categoria]}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{g.descripcion}</td>
+                    <td style={{ color: 'var(--rojo)', fontWeight: 700 }}>{fmtQ(g.monto)}</td>
+                    <td className="text-muted">{g.usuario}</td>
+                    <td className="text-muted">
+                      {new Date(`${String(g.fecha).slice(0, 10)}T12:00:00`).toLocaleDateString('es')}
+                    </td>
+                    <td>
+                      <button className="btn btn-danger btn-sm" onClick={() => eliminarGasto(g.id)}>✕</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
 

@@ -108,6 +108,23 @@ export default function Dashboard() {
                 sobre {new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} días
               </div>
             </div>
+            <div className="metric-card">
+              <div className="metric-label">Pedidos este mes</div>
+              <div className="metric-value rojo">{fmt(resumen.gastos_pedidos_mes)}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Pagos del negocio este mes</div>
+              <div className="metric-value rojo">{fmt(resumen.gastos_pagos_mes)}</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Utilidad neta del mes</div>
+              <div className={`metric-value ${resumen.utilidad_neta_mes >= 0 ? 'verde' : 'rojo'}`}>
+                {fmt(resumen.utilidad_neta_mes)}
+              </div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                Ventas − pedidos − pagos del negocio
+              </div>
+            </div>
           </div>
         )}
 
