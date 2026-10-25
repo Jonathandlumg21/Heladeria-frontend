@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import api from '../api/axios'
 import toast from 'react-hot-toast'
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell, ReferenceLine,
+} from 'recharts'
 
 const VACÍO = { nombre: '', email: '', password: '', rol: 'vendedor', activo: true }
 const ROL_LABEL = { admin: 'Administrador', vendedor: 'Vendedor', bodeguero: 'Bodeguero', propietario: 'Propietario' }
@@ -27,13 +31,32 @@ export default function Admin() {
   const [formGasto, setFormGasto]       = useState(GASTO_VACÍO)
   const [guardandoGasto, setGuardandoGasto] = useState(false)
   const [resumenMes, setResumenMes]     = useState(null)
+  const [promedioMensual, setPromedioMensual] = useState(null)
 
   const cargar = () => api.get('/usuarios').then(r => setUsuarios(r.data))
   const cargarCats = () => api.get('/usuarios/categorias').then(r => setCategorias(r.data))
   const cargarGastos = (categoria = filtroGasto) =>
     api.get('/gastos', { params: categoria ? { categoria } : {} }).then(r => setGastos(r.data))
   const cargarResumenMes = () => api.get('/gastos/resumen-mes').then(r => setResumenMes(r.data))
-  useEffect(() => { cargar(); cargarCats(); cargarGastos(''); cargarResumenMes() }, [])
+  const cargarPromedioMensual = () => api.get('/dashboard/promedio-mensual').then(r => setPromedioMensual(r.data))
+  useEffect(() => { cargar(); cargarCats(); cargarGastos(''); cargarResumenMes(); cargarPromedioMensual() }, [])
+
+  // Promedio de venta mensual = total vendido en el mes ÷ días del mes
+  // (para el mes en curso, ÷ días transcurridos; para meses cerrados, ÷ días totales del mes)
+  const mesesVenta       = promedioMensual?.meses || []
+  const mesActualVenta   = mesesVenta.find(m => m.es_actual)
+  const mesesAnteriores  = mesesVenta.filter(m => !m.es_actual)
+  const promedioDiarioAnteriores = mesesAnteriores.length
+    ? mesesAnteriores.reduce((s, m) => s + m.promedio_diario, 0) / mesesAnteriores.length
+    : 0
+  const totalMesActual     = mesActualVenta?.total || 0
+  const diaActualVenta     = promedioMensual?.dia_actual || 1
+  const diasMesActual      = mesActualVenta?.dias_mes || 30
+  const promedioDiarioMes  = mesActualVenta?.promedio_diario || 0
+  const proyeccionMesVenta = promedioDiarioMes * diasMesActual
+  const diffVsPromedio = promedioDiarioAnteriores > 0
+    ? ((promedioDiarioMes - promedioDiarioAnteriores) / promedioDiarioAnteriores) * 100
+    : null
 
   const agregarGasto = async () => {
     if (!formGasto.descripcion.trim() || !formGasto.monto || parseFloat(formGasto.monto) <= 0) {
@@ -168,6 +191,109 @@ export default function Admin() {
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Promedio de venta mensual */}
+        <div className="card card-body" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontWeight: 700, marginBottom: 16 }}>📈 Promedio de venta mensual</h3>
+
+          <div className="metrics-grid" style={{ marginBottom: 20 }}>
+            <div className="metric-card">
+              <div className="metric-label">Promedio diario — este mes</div>
+              <div className="metric-value verde">{fmtQ(promedioDiarioMes)}</div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                {fmtQ(totalMesActual)} ÷ {diaActualVenta} días (día {diaActualVenta} de {diasMesActual})
+              </div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Promedio diario — meses anteriores</div>
+              <div className="metric-value">{fmtQ(promedioDiarioAnteriores)}</div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                Sobre {mesesAnteriores.length} {mesesAnteriores.length === 1 ? 'mes cerrado' : 'meses cerrados'}
+              </div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Este mes vs. promedio</div>
+              <div className={`metric-value ${diffVsPromedio == null ? '' : diffVsPromedio >= 0 ? 'verde' : 'rojo'}`}>
+                {diffVsPromedio == null ? '—' : `${diffVsPromedio >= 0 ? '+' : ''}${diffVsPromedio.toFixed(1)}%`}
+              </div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-label">Proyección del total del mes</div>
+              <div className="metric-value" style={{ color: 'var(--azul)' }}>{fmtQ(proyeccionMesVenta)}</div>
+              <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                Si se mantiene el promedio diario
+              </div>
+            </div>
+          </div>
+
+          {mesesVenta.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: 24 }}>
+              Sin ventas registradas aún
+            </p>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={mesesVenta.map(m => ({ ...m, etiqueta: `${m.nombre_mes.trim()} ${m.anio}` }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0"/>
+                  <XAxis dataKey="etiqueta" tick={{ fontSize: 10 }}/>
+                  <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `Q${v}`}/>
+                  <Tooltip formatter={(v, _n, p) => [fmtQ(v) + '/día', p.payload.es_actual ? 'Promedio este mes (en curso)' : 'Promedio diario']}/>
+                  {promedioDiarioAnteriores > 0 && (
+                    <ReferenceLine
+                      y={promedioDiarioAnteriores}
+                      stroke="#854f0b"
+                      strokeDasharray="4 4"
+                      label={{ value: 'Promedio', position: 'insideTopRight', fontSize: 11, fill: '#854f0b' }}
+                    />
+                  )}
+                  <Bar dataKey="promedio_diario" radius={[4, 4, 0, 0]}>
+                    {mesesVenta.map((m, i) => (
+                      <Cell key={i} fill={m.es_actual ? '#0f6e56' : '#1a56a0'}/>
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', gap: 16, margin: '10px 0 20px', fontSize: 12, color: 'var(--text-muted)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: '#1a56a0' }}/> Meses anteriores (cerrados)
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: 3, background: '#0f6e56' }}/> Mes actual (en curso)
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Mes</th>
+                      <th>Total vendido</th>
+                      <th>Días</th>
+                      <th>Promedio diario</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...mesesVenta].reverse().map(m => (
+                      <tr key={`${m.anio}-${m.mes}`}>
+                        <td style={{ fontWeight: 500 }}>
+                          {m.nombre_mes.trim()} {m.anio}
+                          {m.es_actual && <span className="badge badge-vendedor" style={{ marginLeft: 8 }}>En curso</span>}
+                        </td>
+                        <td>{fmtQ(m.total)}</td>
+                        <td className="text-muted">
+                          {m.dias_transcurridos}{m.es_actual ? ` de ${m.dias_mes}` : ''}
+                        </td>
+                        <td style={{ fontWeight: 700, color: m.es_actual ? 'var(--verde)' : 'var(--azul)' }}>
+                          {fmtQ(m.promedio_diario)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Gestión de categorías */}
